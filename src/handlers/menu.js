@@ -1,4 +1,4 @@
-import content from "../data/content.json" with { type: "json" };
+import content from "../data/content.js";
 
 export function setupMenu(bot) {
   bot.callbackQuery("about", async (ctx) => {
