@@ -1,5 +1,5 @@
 import { saveUser } from "../database.js";
-import content from "../data/content.json" with { type: "json" };
+import content from "../data/content.js";
 import { mainKeyboard } from "../keyboards/mainKeyboard.js";
 
 export function setupStart(bot) {
