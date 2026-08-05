@@ -4,5 +4,5 @@ compatibility_date = "2024-04-05"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "abbas-bot-db"
-database_id = "your-database-id"
+database_name = "abbas-aghebaty-bot"
+database_id = "df9f5c73-eedb-4352-bde6-5b8aea6167e0"
