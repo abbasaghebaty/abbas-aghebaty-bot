@@ -1,45 +1,20 @@
-import { Bot } from "grammy";
-import { initDB } from "./database.js";
-import { setupStart } from "./handlers/start.js";
-import { setupMenu } from "./handlers/menu.js";
-import { setupMessages } from "./handlers/messages.js";
-
-let dbInitialized = false;
-
 export default {
   async fetch(request, env) {
-    // یک‌بار ساخت دیتابیس
-    if (!dbInitialized) {
-      await initDB(env.DB);
-      dbInitialized = true;
-    }
-
-    // اگر درخواست POST نبود (مثلاً مرورگر)، یه پیغام ساده برگردون
+    // پاسخ به مرورگر
     if (request.method !== "POST") {
-      return new Response("🤖 Abbas Assistant Bot is running.", {
-        status: 200,
-      });
+      return new Response("OK - Bot is alive", { status: 200 });
     }
 
-    try {
-      const bot = new Bot(env.BOT_TOKEN);
+    // پاسخ ساده به تلگرام (موقت)
+    const body = await request.json();
+    console.log("Update received:", JSON.stringify(body));
 
-      // تزریق env به context
-      bot.use((ctx, next) => {
-        ctx.env = env;
-        return next();
-      });
-
-      // ثبت هندلرها
-      setupStart(bot);
-      setupMenu(bot);
-      setupMessages(bot);
-
-      // ارسال به Grammy
-      return await bot.fetch(request);
-    } catch (error) {
-      console.error("Bot error:", error);
-      return new Response("Internal Server Error", { status: 500 });
-    }
-  },
+    return new Response(JSON.stringify({
+      method: "sendMessage",
+      chat_id: body.message?.chat?.id || body.callback_query?.message?.chat?.id,
+      text: "سلام! ربات کار می‌کنه 🎉"
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
 };
