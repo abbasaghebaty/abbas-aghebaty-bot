@@ -1,5 +1,5 @@
 import { InlineKeyboard } from "grammy";
-import content from "../data/content.json" with { type: "json" };
+import content from "../data/content.js";
 
 export function mainKeyboard() {
   const { buttons } = content;
