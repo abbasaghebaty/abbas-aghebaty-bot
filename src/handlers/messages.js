@@ -1,4 +1,4 @@
-import content from "../data/content.json" with { type: "json" };
+import content from "../data/content.js";
 
 export function setupMessages(bot) {
   bot.on("message:text", async (ctx) => {
