@@ -8,22 +8,38 @@ let dbInitialized = false;
 
 export default {
   async fetch(request, env) {
+    // یک‌بار ساخت دیتابیس
     if (!dbInitialized) {
       await initDB(env.DB);
       dbInitialized = true;
     }
 
-    const bot = new Bot(env.BOT_TOKEN);
+    // اگر درخواست POST نبود (مثلاً مرورگر)، یه پیغام ساده برگردون
+    if (request.method !== "POST") {
+      return new Response("🤖 Abbas Assistant Bot is running.", {
+        status: 200,
+      });
+    }
 
-    bot.use((ctx, next) => {
-      ctx.env = env;
-      return next();
-    });
+    try {
+      const bot = new Bot(env.BOT_TOKEN);
 
-    setupStart(bot);
-    setupMenu(bot);
-    setupMessages(bot);
+      // تزریق env به context
+      bot.use((ctx, next) => {
+        ctx.env = env;
+        return next();
+      });
 
-    return await bot.fetch(request);
-  }
+      // ثبت هندلرها
+      setupStart(bot);
+      setupMenu(bot);
+      setupMessages(bot);
+
+      // ارسال به Grammy
+      return await bot.fetch(request);
+    } catch (error) {
+      console.error("Bot error:", error);
+      return new Response("Internal Server Error", { status: 500 });
+    }
+  },
 };
