@@ -1,0 +1,17 @@
+export default {
+  welcome: "سلام.\nمن منشی عباس هستم.\nچه کاری میتونم برات انجام بدم؟",
+  about: "عباس یک توسعه‌دهنده وب با تجربه در ...",
+  social_links: [
+    { name: "تلگرام", url: "https://t.me/abbas" },
+    { name: "اینستاگرام", url: "https://instagram.com/abbas" }
+  ],
+  buy_text: "برای خرید فیلترشکن ویتوری به آیدی زیر پیام بده:\n@abbas_support",
+  anonymous_prompt: "پیام ناشناس خود را بنویسید و ارسال کنید.",
+  anonymous_thanks: "پیام شما به عباس ارسال شد.",
+  buttons: {
+    about: "درباره من",
+    social: "شبکه‌های اجتماعی",
+    anonymous: "ارسال پیام ناشناس",
+    buy: "خرید فیلترشکن ویتوری"
+  }
+};
