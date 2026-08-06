@@ -1,3 +1,4 @@
+// src/handlers/menu.js
 import content from "../data/content.js";
 
 export function setupMenu(bot) {
@@ -16,7 +17,6 @@ export function setupMenu(bot) {
 
   bot.callbackQuery("anonymous", async (ctx) => {
     await ctx.answerCallbackQuery();
-    // در نسخه‌های بعدی اینجا جلسه را ذخیره می‌کنیم
     await ctx.reply(content.anonymous_prompt);
   });
 
