@@ -53,8 +53,7 @@ const PROJECTS_TEXT = `‌🚀 <b>پروژه‌ها</b>
 📌 <a href="https://abbasaghebaty.github.io/Caption-Generator/">Caption Generator</a>
 ابزار تولید و مدیریت کپشن برای شبکه‌های اجتماعی با قابلیت آماده‌سازی متن‌های حرفه‌ای برای انتشار محتوا.
 
-📌 <a href="https://t.me/YourClean_bot">YourClean Bot</a>
-ربات تلگرامی فروشگاهی برای معرفی محصولات، ارتباط با کاربران و ارائه خدمات آنلاین.
+
 
 📌 <a href="http://shoma-shop.ir/">Shoma Shop</a>
 وب‌سایت فروشگاهی با طراحی اختصاصی برای معرفی محصولات و ایجاد تجربه خرید آنلاین.
