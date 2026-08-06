@@ -1,4 +1,4 @@
-import { Bot, Keyboard, webhookCallback } from "grammy";
+import { Bot, InlineKeyboard, Keyboard, webhookCallback } from "grammy";
 
 // ============================================================
 //  متن‌ها (Texts) — همه‌ی متن‌های ثابت ربات اینجاست تا راحت ویرایش شوند
@@ -24,10 +24,18 @@ const BUY_TEXT = `🛒 خرید فیلترشکن ویتوری
 🆔 آیدی پشتیبانی: @your_support_id`;
 
 const SOCIAL_INTRO_TEXT = `یکی از شبکه‌ها رو انتخاب کن 👇`;
-const ASK_ANON_TEXT = `✍️ پیام خود را وارد کنید:
-(همین که پیامت رو بفرستی، مستقیم برای عباس ارسال می‌شه)`;
-const SENT_TEXT = `پیام شما به عباس ارسال شد.`;
 const BACK_TO_MENU_TEXT = `برگشتی به منوی اصلی 👇`;
+
+// ============================================================
+// 👇👇👇 لینک‌های زیر رو با لینک واقعی خودت جایگزین کن 👇👇👇
+// ============================================================
+const CHATBOT_LINK = "https://t.me/PUT_CHATBOT_LINK_HERE";
+const BEGO_BAT_LINK = "https://t.me/PUT_BEGOBAT_LINK_HERE";
+// ============================================================
+
+const ANON_INTRO_TEXT = `💬 ارسال پیام ناشناس
+
+از طریق یکی از ربات‌های زیر می‌تونی به‌صورت ناشناس باهام در ارتباط باشی 👇`;
 
 // لینک‌های شبکه‌های اجتماعی — اینجا لینک واقعی رو جایگزین کن
 const INSTAGRAM_LINK = "https://instagram.com/your_id";
@@ -86,6 +94,12 @@ function socialsKeyboard() {
     .resized();
   // برای افزودن لینک بیشتر در آینده: یک .text("...").row() دیگر
   // اینجا و یک bot.hears(...) متناظر برایش در پایین اضافه کن
+}
+
+function anonKeyboard() {
+  return new InlineKeyboard()
+    .url("چت بات", CHATBOT_LINK)
+    .url("بگو بات", BEGO_BAT_LINK);
 }
 
 // ============================================================
@@ -202,8 +216,7 @@ function createBot(env) {
   });
 
   bot.hears(BTN_ANON, async (ctx) => {
-    await setState(env.DB, ctx.from.id, "awaiting_message", null);
-    await ctx.reply(ASK_ANON_TEXT);
+    await ctx.reply(ANON_INTRO_TEXT, { reply_markup: anonKeyboard() });
   });
 
   // ---------- زیرمنوی شبکه‌های اجتماعی ----------
@@ -250,54 +263,8 @@ function createBot(env) {
       }
     }
 
-    // جریان پیام ناشناس: به‌محض دریافت متن، مستقیم برای ادمین ارسال می‌شود
-    const state = await getState(env.DB, telegramId);
-
-    if (state?.state === "awaiting_message") {
-      // هر اتفاقی که بیفتد (موفق یا ناموفق)، حتماً باید وضعیت پاک شود؛
-      // وگرنه کاربر برای همیشه توی حالت "در انتظار پیام" گیر می‌کند.
-      try {
-        const userRow = await env.DB
-          .prepare(`SELECT username, first_name FROM users WHERE telegram_id = ?`)
-          .bind(telegramId)
-          .first();
-
-        const fromName = userRow?.first_name ?? ctx.from.first_name ?? "کاربر ناشناس";
-        const usernameLabel = userRow?.username
-          ? "@" + userRow.username
-          : ctx.from.username
-          ? "@" + ctx.from.username
-          : "بدون یوزرنیم";
-
-        const infoText = `📩 پیام ناشناس جدید
-
-از طرف: ${fromName} (${usernameLabel})
-🆔 ID: ${telegramId}
-
-متن پیام:
-${text}`;
-
-        const sentMsg = await ctx.api.sendMessage(ADMIN_ID, infoText);
-        await saveAdminMessageLink(env.DB, sentMsg.message_id, telegramId);
-
-        await ctx.reply(SENT_TEXT, { reply_markup: mainKeyboard() });
-      } catch (err) {
-        // اگر ارسال برای ادمین fail شود (مثلاً ADMIN_ID اشتباه است یا
-        // عباس هنوز هیچ‌وقت /start را نزده) اینجا لاگ می‌شود — با
-        // `wrangler tail` قابل مشاهده است — و به‌جای کرش کردن ربات،
-        // به کاربر خبر داده می‌شود.
-        console.error("Failed to relay anonymous message to admin:", err);
-        await ctx.reply(
-          "متاسفانه در حال حاضر امکان ارسال پیام وجود نداره. لطفاً بعداً دوباره امتحان کن.",
-          { reply_markup: mainKeyboard() }
-        );
-      } finally {
-        await clearState(env.DB, telegramId);
-      }
-      return;
-    }
-
-    // در غیر این صورت کاربر را به منو راهنمایی کن
+    // پاسخ عباس بالاتر پردازش شد؛ اگر به این‌جا رسیدیم یعنی نه دکمه‌ی منو بود
+    // و نه ریپلای ادمین — کاربر را به منو راهنمایی کن
     await ctx.reply("برای شروع از منوی زیر استفاده کن 👇", {
       reply_markup: mainKeyboard(),
     });
