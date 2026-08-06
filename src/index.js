@@ -47,6 +47,14 @@ const SKILLS_LIST_TEXT = `‌🚀 <b>مهارت‌ها</b>
 
 const PROJECTS_TEXT = `‌🚀 <b>پروژه‌ها</b>
 
+🌐 <b>سایت‌ها</b>
+
+📌 <a href="https://abbasaghebaty.github.io/about-me/">Personal Portfolio Website</a>
+وب‌سایت شخصی معرفی مهارت‌ها، پروژه‌ها و مسیر توسعه حرفه‌ای با طراحی مدرن و واکنش‌گرا.
+
+📌 <a href="http://shoma-shop.ir/">Shoma Shop</a>
+وب‌سایت فروشگاهی با طراحی اختصاصی برای معرفی محصولات و ایجاد تجربه خرید آنلاین.
+
 📌 <a href="https://abbasaghebaty.github.io/Increase-photo-resolotion/">Image Resolution Enhancer</a>
 ابزار تحت وب برای افزایش کیفیت و رزولوشن تصاویر با رابط کاربری ساده و کاربردی.
 
@@ -54,15 +62,14 @@ const PROJECTS_TEXT = `‌🚀 <b>پروژه‌ها</b>
 ابزار تولید و مدیریت کپشن برای شبکه‌های اجتماعی با قابلیت آماده‌سازی متن‌های حرفه‌ای برای انتشار محتوا.
 
 
+🤖 <b>ربات‌ها</b>
 
-📌 <a href="http://shoma-shop.ir/">Shoma Shop</a>
-وب‌سایت فروشگاهی با طراحی اختصاصی برای معرفی محصولات و ایجاد تجربه خرید آنلاین.
+📌 <a href="https://t.me/YourClean_bot">YourClean Bot</a>
+ربات تلگرامی فروشگاهی برای معرفی محصولات، ارتباط با کاربران و ارائه خدمات آنلاین.
 
 📌 <a href="https://t.me/abbas_aghebaty_bot">Abbas Assistant Bot</a>
-دستیار شخصی تلگرامی با قابلیت تعامل با کاربران، نمایش اطلاعات و مدیریت درخواست‌ها.
+دستیار شخصی تلگرامی با قابلیت تعامل با کاربران، نمایش اطلاعات و مدیریت درخواست‌ها.`;
 
-📌 <a href="https://abbasaghebaty.github.io/about-me/">Personal Portfolio Website</a>
-وب‌سایت شخصی معرفی مهارت‌ها، پروژه‌ها و مسیر توسعه حرفه‌ای.`;
 
 const BUY_TEXT = `🛒 خرید فیلترشکن ویتوری
 
@@ -239,6 +246,9 @@ bot.callbackQuery("projects", async (ctx) => {
 
   await ctx.editMessageText(PROJECTS_TEXT, {
     parse_mode: "HTML",
+    link_preview_options: {
+      is_disabled: true
+    },
     reply_markup: backToSkillsKeyboard()
   });
 });
