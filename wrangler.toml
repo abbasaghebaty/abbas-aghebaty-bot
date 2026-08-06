@@ -15,12 +15,6 @@ database_id = "df9f5c73-eedb-4352-bde6-5b8aea6167e0"
 
 
 
-[vars]
-
-ADMIN_ID = "7548075013"
-
-
-
 [observability]
 
 enabled = false
