@@ -1,4 +1,4 @@
-import { Bot, InlineKeyboard, Keyboard, webhookCallback } from "grammy";
+import { Bot, Keyboard, webhookCallback } from "grammy";
 
 // ============================================================
 //  متن‌ها (Texts) — همه‌ی متن‌های ثابت ربات اینجاست تا راحت ویرایش شوند
@@ -10,7 +10,12 @@ const WELCOME_TEXT = `سلام.
 const ABOUT_TEXT = `👤 درباره من
 
 سلام! من عباس هستم.
-این بخش رو می‌تونی با معرفی واقعی خودت جایگزین کنی (بیوگرافی، مهارت‌ها، فعالیت‌ها و ...).`;
+این بخش رو می‌تونی با معرفی واقعی خودت جایگزین کنی.`;
+
+const SKILLS_TEXT = `🛠 مهارت‌ها و پروژه‌ها
+
+این متن رو خودت جایگزین کن — می‌تونی درباره‌ی مهارت‌ها، پروژه‌ها و
+نمونه‌کارهات اینجا بنویسی.`;
 
 const BUY_TEXT = `🛒 خرید فیلترشکن ویتوری
 
@@ -18,32 +23,69 @@ const BUY_TEXT = `🛒 خرید فیلترشکن ویتوری
 
 🆔 آیدی پشتیبانی: @your_support_id`;
 
-const ASK_MESSAGE_TEXT = `✍️ پیام خود را وارد کنید:`;
+const SOCIAL_INTRO_TEXT = `یکی از شبکه‌ها رو انتخاب کن 👇`;
+const ASK_ANON_TEXT = `✍️ پیام خود را وارد کنید:
+(همین که پیامت رو بفرستی، مستقیم برای عباس ارسال می‌شه)`;
 const SENT_TEXT = `پیام شما به عباس ارسال شد.`;
-const CANCELED_TEXT = `❌ ارسال لغو شد.`;
+const BACK_TO_MENU_TEXT = `برگشتی به منوی اصلی 👇`;
+
+// لینک‌های شبکه‌های اجتماعی — اینجا لینک واقعی رو جایگزین کن
+const INSTAGRAM_LINK = "https://instagram.com/your_id";
+const TELEGRAM_LINK = "https://t.me/your_channel";
+const YOUTUBE_LINK = "https://youtube.com/@your_channel";
+
+const SUPPORT_ID = "@your_support_id";
 
 // ============================================================
-//  کیبوردها (Keyboards)
+//  متن دکمه‌ها (به عنوان ثابت، تا هم کیبورد و هم hears دقیقاً یکی باشن)
+// ============================================================
+const BTN_SOCIALS = "🌐 شبکه‌های اجتماعی";
+const BTN_SKILLS = "🛠 مهارت‌ها و پروژه‌ها";
+const BTN_ABOUT = "👤 درباره من";
+const BTN_BUY = "🛒 خرید فیلترشکن ویتوری";
+const BTN_ANON = "💬 ارسال پیام ناشناس";
+
+const BTN_INSTAGRAM = "📷 اینستاگرام";
+const BTN_TELEGRAM = "📢 تلگرام";
+const BTN_YOUTUBE = "🎬 یوتیوب";
+const BTN_BACK = "🔙 بازگشت به منوی اصلی";
+
+// هر کدوم از این دکمه‌ها که زده بشه یعنی کاربر داره "ناوبری" می‌کنه،
+// پس اگه وسط ارسال پیام ناشناس بود، وضعیتش پاک می‌شه
+const NAV_BUTTONS = new Set([
+  BTN_SOCIALS,
+  BTN_SKILLS,
+  BTN_ABOUT,
+  BTN_BUY,
+  BTN_ANON,
+  BTN_INSTAGRAM,
+  BTN_TELEGRAM,
+  BTN_YOUTUBE,
+  BTN_BACK,
+]);
+
+// ============================================================
+//  کیبوردها (Keyboards) — همه ستونی (هر دکمه توی یک ردیف جدا)
 // ============================================================
 function mainKeyboard() {
   return new Keyboard()
-    .text("🌐 شبکه‌های اجتماعی").text("👤 درباره من").row()
-    .text("💬 ارسال پیام ناشناس").text("🛒 خرید فیلترشکن ویتوری")
+    .text(BTN_SOCIALS).row()
+    .text(BTN_SKILLS).row()
+    .text(BTN_ABOUT).row()
+    .text(BTN_BUY).row()
+    .text(BTN_ANON).row()
     .resized();
 }
 
 function socialsKeyboard() {
-  return new InlineKeyboard()
-    .url("📷 اینستاگرام", "https://instagram.com/your_id").row()
-    .url("📢 تلگرام", "https://t.me/your_channel").row()
-    .url("🎬 یوتیوب", "https://youtube.com/@your_channel");
-  // برای افزودن لینک‌های بیشتر در آینده، همینجا یک .row() و .url() دیگر اضافه کن
-}
-
-function confirmKeyboard() {
-  return new InlineKeyboard()
-    .text("✅ ارسال", "confirm_send")
-    .text("❌ لغو", "cancel_send");
+  return new Keyboard()
+    .text(BTN_INSTAGRAM).row()
+    .text(BTN_TELEGRAM).row()
+    .text(BTN_YOUTUBE).row()
+    .text(BTN_BACK).row()
+    .resized();
+  // برای افزودن لینک بیشتر در آینده: یک .text("...").row() دیگر
+  // اینجا و یک bot.hears(...) متناظر برایش در پایین اضافه کن
 }
 
 // ============================================================
@@ -109,98 +151,79 @@ async function getUserIdByAdminMessage(db, messageId) {
 }
 
 // ============================================================
-//  ساخت ربات (Bot factory) — چون روی Workers هیچ state سراسری
-//  پایداری نداریم، هر بار روی هر ریکوئست یک نمونه ساخته می‌شود
+//  ساخت ربات (Bot factory)
 // ============================================================
 function createBot(env) {
   const bot = new Bot(env.BOT_TOKEN);
   const ADMIN_ID = Number(env.ADMIN_ID);
 
-  // ---------- /start ----------
+  // ---------- میان‌افزار سراسری ۱: ذخیره‌ی خودکار هر کاربر ----------
+  // در هر تعامل (پیام، دستور، هر چیز دیگر) اگر آیدی کاربر در دیتابیس
+  // نبود ذخیره می‌شود، و اگر بود اطلاعاتش به‌روزرسانی می‌شود.
+  bot.use(async (ctx, next) => {
+    if (ctx.from) {
+      await upsertUser(env.DB, ctx.from);
+    }
+    await next();
+  });
+
+  // ---------- میان‌افزار سراسری ۲: پاک کردن وضعیت هنگام ناوبری ----------
+  // اگر کاربر وسط ارسال پیام ناشناس بود و روی هر دکمه‌ی دیگری از منو زد،
+  // وضعیت "در انتظار پیام" لغو می‌شود.
+  bot.use(async (ctx, next) => {
+    const text = ctx.message?.text;
+    if (text && NAV_BUTTONS.has(text) && ctx.from) {
+      await clearState(env.DB, ctx.from.id);
+    }
+    await next();
+  });
+
+  // ---------- /start : در هر حالتی کاربر را به منوی اصلی برمی‌گرداند ----------
   bot.command("start", async (ctx) => {
-    await upsertUser(env.DB, ctx.from);
     await clearState(env.DB, ctx.from.id);
     await ctx.reply(WELCOME_TEXT, { reply_markup: mainKeyboard() });
   });
 
   // ---------- منوی اصلی ----------
-  bot.hears("🌐 شبکه‌های اجتماعی", async (ctx) => {
-    await ctx.reply("لینک‌های من رو از پایین انتخاب کن 👇", {
-      reply_markup: socialsKeyboard(),
-    });
+  bot.hears(BTN_SOCIALS, async (ctx) => {
+    await ctx.reply(SOCIAL_INTRO_TEXT, { reply_markup: socialsKeyboard() });
   });
 
-  bot.hears("👤 درباره من", async (ctx) => {
+  bot.hears(BTN_SKILLS, async (ctx) => {
+    await ctx.reply(SKILLS_TEXT);
+  });
+
+  bot.hears(BTN_ABOUT, async (ctx) => {
     await ctx.reply(ABOUT_TEXT);
   });
 
-  bot.hears("🛒 خرید فیلترشکن ویتوری", async (ctx) => {
+  bot.hears(BTN_BUY, async (ctx) => {
     await ctx.reply(BUY_TEXT);
   });
 
-  bot.hears("💬 ارسال پیام ناشناس", async (ctx) => {
+  bot.hears(BTN_ANON, async (ctx) => {
     await setState(env.DB, ctx.from.id, "awaiting_message", null);
-    await ctx.reply(ASK_MESSAGE_TEXT, { reply_markup: { remove_keyboard: true } });
+    await ctx.reply(ASK_ANON_TEXT);
   });
 
-  // ---------- دکمه‌های شیشه‌ای تایید/لغو ارسال پیام ناشناس ----------
-  bot.on("callback_query:data", async (ctx) => {
-    const data = ctx.callbackQuery.data;
-    const telegramId = ctx.from.id;
-
-    if (data === "confirm_send") {
-      const state = await getState(env.DB, telegramId);
-      if (!state || state.state !== "awaiting_confirmation" || !state.message) {
-        await ctx.answerCallbackQuery({ text: "پیامی برای ارسال پیدا نشد.", show_alert: true });
-        return;
-      }
-
-      const userRow = await env.DB
-        .prepare(`SELECT username, first_name FROM users WHERE telegram_id = ?`)
-        .bind(telegramId)
-        .first();
-
-      const infoText = `👤 کاربر جدید
-
-🆔 ID:
-${telegramId}
-
-👤 Username:
-${userRow?.username ? "@" + userRow.username : "ندارد"}
-
-📝 نام:
-${userRow?.first_name ?? "-"}`;
-
-      // اطلاعات کاربر برای ادمین
-      await ctx.api.sendMessage(ADMIN_ID, infoText);
-      // متن پیام کاربر (این پیام رو ذخیره می‌کنیم تا وقتی عباس روش Reply زد بفهمیم برای کیه)
-      const sentMsg = await ctx.api.sendMessage(ADMIN_ID, state.message);
-      await saveAdminMessageLink(env.DB, sentMsg.message_id, telegramId);
-
-      await clearState(env.DB, telegramId);
-
-      await ctx.editMessageText(SENT_TEXT);
-      await ctx.answerCallbackQuery();
-      await ctx.api.sendMessage(telegramId, "به منوی اصلی برگشتی 👇", {
-        reply_markup: mainKeyboard(),
-      });
-      return;
-    }
-
-    if (data === "cancel_send") {
-      await clearState(env.DB, telegramId);
-      await ctx.editMessageText(CANCELED_TEXT);
-      await ctx.answerCallbackQuery();
-      await ctx.api.sendMessage(telegramId, "به منوی اصلی برگشتی 👇", {
-        reply_markup: mainKeyboard(),
-      });
-      return;
-    }
-
-    await ctx.answerCallbackQuery();
+  // ---------- زیرمنوی شبکه‌های اجتماعی ----------
+  bot.hears(BTN_INSTAGRAM, async (ctx) => {
+    await ctx.reply(`📷 اینستاگرام:\n${INSTAGRAM_LINK}`);
   });
 
-  // ---------- هر پیام متنی دیگر ----------
+  bot.hears(BTN_TELEGRAM, async (ctx) => {
+    await ctx.reply(`📢 تلگرام:\n${TELEGRAM_LINK}`);
+  });
+
+  bot.hears(BTN_YOUTUBE, async (ctx) => {
+    await ctx.reply(`🎬 یوتیوب:\n${YOUTUBE_LINK}`);
+  });
+
+  bot.hears(BTN_BACK, async (ctx) => {
+    await ctx.reply(BACK_TO_MENU_TEXT, { reply_markup: mainKeyboard() });
+  });
+
+  // ---------- هر پیام متنی دیگر (پیام ناشناس + پاسخ ادمین) ----------
   bot.on("message:text", async (ctx) => {
     const telegramId = ctx.from.id;
     const text = ctx.message.text;
@@ -218,15 +241,35 @@ ${userRow?.first_name ?? "-"}`;
       }
     }
 
-    // جریان عادی کاربر: اگر منتظر دریافت متن پیام ناشناس هستیم
+    // جریان پیام ناشناس: به‌محض دریافت متن، مستقیم برای ادمین ارسال می‌شود
     const state = await getState(env.DB, telegramId);
 
     if (state?.state === "awaiting_message") {
-      await setState(env.DB, telegramId, "awaiting_confirmation", text);
-      await ctx.reply(
-        `پیام شما:\n\n${text}\n\nآیا مطمئن هستی؟`,
-        { reply_markup: confirmKeyboard() }
-      );
+      const userRow = await env.DB
+        .prepare(`SELECT username, first_name FROM users WHERE telegram_id = ?`)
+        .bind(telegramId)
+        .first();
+
+      const fromName = userRow?.first_name ?? ctx.from.first_name ?? "کاربر ناشناس";
+      const usernameLabel = userRow?.username
+        ? "@" + userRow.username
+        : ctx.from.username
+        ? "@" + ctx.from.username
+        : "بدون یوزرنیم";
+
+      const infoText = `📩 پیام ناشناس جدید
+
+از طرف: ${fromName} (${usernameLabel})
+🆔 ID: ${telegramId}
+
+متن پیام:
+${text}`;
+
+      const sentMsg = await ctx.api.sendMessage(ADMIN_ID, infoText);
+      await saveAdminMessageLink(env.DB, sentMsg.message_id, telegramId);
+      await clearState(env.DB, telegramId);
+
+      await ctx.reply(SENT_TEXT, { reply_markup: mainKeyboard() });
       return;
     }
 
