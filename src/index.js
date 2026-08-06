@@ -9,19 +9,21 @@ const WELCOME_TEXT = `سلام.
 
 const ABOUT_TEXT = `👤 درباره من
 
-سلام! من عباس هستم.
-این بخش رو می‌تونی با معرفی واقعی خودت جایگزین کنی.`;
+سلام
+من عباس هستم.
+علاقه‌مند به طراحی، تولید محتوا، ادیت و ساخت پروژه‌های خلاقانه.
+
+این ربات رو ساختم تا ارتباط راحت‌تر باشه و بتونید به بخش‌های مختلف و اطلاعات مورد نیاز دسترسی داشته باشید.`;
 
 const SKILLS_TEXT = `🛠 مهارت‌ها و پروژه‌ها
 
-این متن رو خودت جایگزین کن — می‌تونی درباره‌ی مهارت‌ها، پروژه‌ها و
-نمونه‌کارهات اینجا بنویسی.`;
+اینجا می‌تونید با بخشی از توانایی‌ها، تجربه‌ها و کارهایی که انجام دادم آشنا بشید.
+
+از بین گزینه‌های زیر انتخاب کنید 👇`;
 
 const BUY_TEXT = `🛒 خرید فیلترشکن ویتوری
 
-برای خرید فیلترشکن ویتوری، لطفاً با پشتیبانی در ارتباط باشید:
-
-🆔 آیدی پشتیبانی: @your_support_id`;
+برای خرید فیلترشکن ویتوری، لطفاً از طریق ربات اقدام بفرمایید`;
 
 const SOCIAL_INTRO_TEXT = `یکی از شبکه‌ها رو انتخاب کن 👇`;
 const BACK_TO_MENU_TEXT = `برگشتی به منوی اصلی 👇`;
@@ -29,21 +31,20 @@ const BACK_TO_MENU_TEXT = `برگشتی به منوی اصلی 👇`;
 // ============================================================
 // 👇👇👇 لینک‌های زیر رو با لینک واقعی خودت جایگزین کن 👇👇👇
 // ============================================================
-const CHATBOT_LINK = "https://t.me/PUT_CHATBOT_LINK_HERE";
-const BEGO_BAT_LINK = "https://t.me/PUT_BEGOBAT_LINK_HERE";
+const CHATBOT_LINK = "https://t.me/XBCHATBot?start=sec-hfeiahfabd";
+const BEGO_BAT_LINK = "https://t.me/begoo?start=_5025148012238";
 // ============================================================
 
 const ANON_INTRO_TEXT = `💬 ارسال پیام ناشناس
 
 از طریق یکی از ربات‌های زیر می‌تونی به‌صورت ناشناس باهام در ارتباط باشی 👇`;
 
-const INSTAGRAM_LINK = "https://instagram.com/your_id";
-const YOUTUBE_LINK = "https://youtube.com/@your_channel";
-const TELEGRAM_LINK = "https://t.me/your_channel";
+const INSTAGRAM_LINK = "https://www.instagram.com/abbas.aghebaty";
+const YOUTUBE_LINK = "https://www.youtube.com/@abbas.aghebaty";
+const TELEGRAM_LINK = "https://t.me/abbas_aghebaty";
 
 // ⚠️ حتماً لینک‌های واقعی ربات و کانال کاوه را اینجا بگذار
-const KAVEH_BOT_LINK = "https://t.me/kaveh_support_bot";
-const KAVEH_CHANNEL_LINK = "https://t.me/kaveh_channel";
+const KAVEH_BOT_LINK = "https://t.me/KavehNetVPNBot?start=ref7548075013";
 
 // ============================================================
 //  متن دکمه‌ها
@@ -84,7 +85,6 @@ function socialsKeyboard() {
 function buyKeyboard() {
   return new InlineKeyboard()
     .url("🤖 ربات کاوه", KAVEH_BOT_LINK)
-    .url("📢 کانال کاوه", KAVEH_CHANNEL_LINK);
 }
 
 function anonKeyboard() {
