@@ -29,8 +29,8 @@ const BACK_TO_MENU_TEXT = `برگشتی به منوی اصلی 👇`;
 // ============================================================
 // 👇👇👇 لینک‌های زیر رو با لینک واقعی خودت جایگزین کن 👇👇👇
 // ============================================================
-const CHATBOT_LINK = "https://t.me/XBCHATBot?start=sec-hfeiahfabd";
-const BEGO_BAT_LINK = "https://t.me/begoo?start=_5025148012238";
+const CHATBOT_LINK = "https://t.me/PUT_CHATBOT_LINK_HERE";
+const BEGO_BAT_LINK = "https://t.me/PUT_BEGOBAT_LINK_HERE";
 // ============================================================
 
 const ANON_INTRO_TEXT = `💬 ارسال پیام ناشناس
@@ -38,11 +38,9 @@ const ANON_INTRO_TEXT = `💬 ارسال پیام ناشناس
 از طریق یکی از ربات‌های زیر می‌تونی به‌صورت ناشناس باهام در ارتباط باشی 👇`;
 
 // لینک‌های شبکه‌های اجتماعی — اینجا لینک واقعی رو جایگزین کن
-const INSTAGRAM_LINK = "https://www.instagram.com/abbas.aghebaty";
-const TELEGRAM_LINK = "https://t.me/abbas_aghebaty";
-const YOUTUBE_LINK = "https://www.youtube.com/@abbas.aghebaty";
-
-const SUPPORT_ID = "@your_support_id";
+const INSTAGRAM_LINK = "https://instagram.com/your_id";
+const TELEGRAM_LINK = "https://t.me/your_channel";
+const YOUTUBE_LINK = "https://youtube.com/@your_channel";
 
 // ============================================================
 //  متن دکمه‌ها (به عنوان ثابت، تا هم کیبورد و هم hears دقیقاً یکی باشن)
@@ -54,23 +52,9 @@ const BTN_BUY = "🛒 خرید فیلترشکن ویتوری";
 const BTN_ANON = "💬 ارسال پیام ناشناس";
 
 const BTN_INSTAGRAM = "📷 اینستاگرام";
-const BTN_YOUTUBE = "🎬 یوتیوب";
 const BTN_TELEGRAM = "📢 تلگرام";
+const BTN_YOUTUBE = "🎬 یوتیوب";
 const BTN_BACK = "🔙 بازگشت به منوی اصلی";
-
-// هر کدوم از این دکمه‌ها که زده بشه یعنی کاربر داره "ناوبری" می‌کنه،
-// پس اگه وسط ارسال پیام ناشناس بود، وضعیتش پاک می‌شه
-const NAV_BUTTONS = new Set([
-  BTN_SOCIALS,
-  BTN_SKILLS,
-  BTN_ABOUT,
-  BTN_BUY,
-  BTN_ANON,
-  BTN_INSTAGRAM,
-  BTN_TELEGRAM,
-  BTN_YOUTUBE,
-  BTN_BACK,
-]);
 
 // ============================================================
 //  کیبوردها (Keyboards) — همه ستونی (هر دکمه توی یک ردیف جدا)
@@ -118,60 +102,13 @@ async function upsertUser(db, from) {
     .run();
 }
 
-async function setState(db, telegramId, state, message = null) {
-  await db
-    .prepare(
-      `INSERT INTO user_states (telegram_id, state, message)
-       VALUES (?, ?, ?)
-       ON CONFLICT(telegram_id) DO UPDATE SET
-         state = excluded.state,
-         message = excluded.message`
-    )
-    .bind(telegramId, state, message)
-    .run();
-}
-
-async function getState(db, telegramId) {
-  const row = await db
-    .prepare(`SELECT state, message FROM user_states WHERE telegram_id = ?`)
-    .bind(telegramId)
-    .first();
-  return row ?? null;
-}
-
-async function clearState(db, telegramId) {
-  await db
-    .prepare(`DELETE FROM user_states WHERE telegram_id = ?`)
-    .bind(telegramId)
-    .run();
-}
-
-async function saveAdminMessageLink(db, messageId, telegramId) {
-  await db
-    .prepare(
-      `INSERT INTO admin_messages (message_id, telegram_id) VALUES (?, ?)
-       ON CONFLICT(message_id) DO UPDATE SET telegram_id = excluded.telegram_id`
-    )
-    .bind(messageId, telegramId)
-    .run();
-}
-
-async function getUserIdByAdminMessage(db, messageId) {
-  const row = await db
-    .prepare(`SELECT telegram_id FROM admin_messages WHERE message_id = ?`)
-    .bind(messageId)
-    .first();
-  return row?.telegram_id ?? null;
-}
-
 // ============================================================
 //  ساخت ربات (Bot factory)
 // ============================================================
 function createBot(env) {
   const bot = new Bot(env.BOT_TOKEN);
-  const ADMIN_ID = Number(env.ADMIN_ID);
 
-  // ---------- میان‌افزار سراسری ۱: ذخیره‌ی خودکار هر کاربر ----------
+  // ---------- میان‌افزار سراسری: ذخیره‌ی خودکار هر کاربر ----------
   // در هر تعامل (پیام، دستور، هر چیز دیگر) اگر آیدی کاربر در دیتابیس
   // نبود ذخیره می‌شود، و اگر بود اطلاعاتش به‌روزرسانی می‌شود.
   bot.use(async (ctx, next) => {
@@ -181,20 +118,8 @@ function createBot(env) {
     await next();
   });
 
-  // ---------- میان‌افزار سراسری ۲: پاک کردن وضعیت هنگام ناوبری ----------
-  // اگر کاربر وسط ارسال پیام ناشناس بود و روی هر دکمه‌ی دیگری از منو زد،
-  // وضعیت "در انتظار پیام" لغو می‌شود.
-  bot.use(async (ctx, next) => {
-    const text = ctx.message?.text;
-    if (text && NAV_BUTTONS.has(text) && ctx.from) {
-      await clearState(env.DB, ctx.from.id);
-    }
-    await next();
-  });
-
-  // ---------- /start : در هر حالتی کاربر را به منوی اصلی برمی‌گرداند ----------
+  // ---------- /start : همیشه کاربر را به منوی اصلی برمی‌گرداند ----------
   bot.command("start", async (ctx) => {
-    await clearState(env.DB, ctx.from.id);
     await ctx.reply(WELCOME_TEXT, { reply_markup: mainKeyboard() });
   });
 
@@ -236,35 +161,8 @@ function createBot(env) {
     await ctx.reply(BACK_TO_MENU_TEXT, { reply_markup: mainKeyboard() });
   });
 
-  // ---------- هر پیام متنی دیگر (پیام ناشناس + پاسخ ادمین) ----------
+  // ---------- هر پیام متنی دیگر که با هیچ‌کدام از دکمه‌ها مطابقت نداشت ----------
   bot.on("message:text", async (ctx) => {
-    const telegramId = ctx.from.id;
-    const text = ctx.message.text;
-
-    // اگر به هر دلیلی متنِ یک دکمه‌ی منو به این‌جا رسیده باشد (مثلاً وضعیت
-    // قبلاً پاک نشده بوده)، به‌جای پردازش‌اش به‌عنوان پیام ناشناس، فقط
-    // وضعیت را پاک می‌کنیم تا کاربر گیر نکند؛ خودِ دکمه با bot.hears
-    // به‌طور طبیعی قبل از این هندلر پاسخ داده می‌شود.
-    if (NAV_BUTTONS.has(text)) {
-      await clearState(env.DB, telegramId);
-      return;
-    }
-
-    // بخش ادمین: وقتی عباس روی یکی از پیام‌های relay‌شده Reply می‌زند
-    if (telegramId === ADMIN_ID && ctx.message.reply_to_message) {
-      const targetId = await getUserIdByAdminMessage(
-        env.DB,
-        ctx.message.reply_to_message.message_id
-      );
-      if (targetId) {
-        await ctx.api.sendMessage(targetId, `📩 پاسخ عباس:\n${text}`);
-        await ctx.reply("✅ پاسخ برای کاربر ارسال شد.");
-        return;
-      }
-    }
-
-    // پاسخ عباس بالاتر پردازش شد؛ اگر به این‌جا رسیدیم یعنی نه دکمه‌ی منو بود
-    // و نه ریپلای ادمین — کاربر را به منو راهنمایی کن
     await ctx.reply("برای شروع از منوی زیر استفاده کن 👇", {
       reply_markup: mainKeyboard(),
     });
