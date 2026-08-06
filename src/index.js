@@ -29,8 +29,8 @@ const BACK_TO_MENU_TEXT = `برگشتی به منوی اصلی 👇`;
 // ============================================================
 // 👇👇👇 لینک‌های زیر رو با لینک واقعی خودت جایگزین کن 👇👇👇
 // ============================================================
-const CHATBOT_LINK = "https://t.me/PUT_CHATBOT_LINK_HERE";
-const BEGO_BAT_LINK = "https://t.me/PUT_BEGOBAT_LINK_HERE";
+const CHATBOT_LINK = "https://t.me/XBCHATBot?start=sec-hfeiahfabd";
+const BEGO_BAT_LINK = "https://t.me/begoo?start=_5025148012238";
 // ============================================================
 
 const ANON_INTRO_TEXT = `💬 ارسال پیام ناشناس
@@ -38,9 +38,9 @@ const ANON_INTRO_TEXT = `💬 ارسال پیام ناشناس
 از طریق یکی از ربات‌های زیر می‌تونی به‌صورت ناشناس باهام در ارتباط باشی 👇`;
 
 // لینک‌های شبکه‌های اجتماعی — اینجا لینک واقعی رو جایگزین کن
-const INSTAGRAM_LINK = "https://instagram.com/your_id";
-const TELEGRAM_LINK = "https://t.me/your_channel";
-const YOUTUBE_LINK = "https://youtube.com/@your_channel";
+const INSTAGRAM_LINK = "https://www.instagram.com/abbas.aghebaty";
+const TELEGRAM_LINK = "https://t.me/abbas_aghebaty";
+const YOUTUBE_LINK = "https://www.youtube.com/@abbas.aghebaty";
 
 const SUPPORT_ID = "@your_support_id";
 
@@ -54,8 +54,8 @@ const BTN_BUY = "🛒 خرید فیلترشکن ویتوری";
 const BTN_ANON = "💬 ارسال پیام ناشناس";
 
 const BTN_INSTAGRAM = "📷 اینستاگرام";
-const BTN_TELEGRAM = "📢 تلگرام";
 const BTN_YOUTUBE = "🎬 یوتیوب";
+const BTN_TELEGRAM = "📢 تلگرام";
 const BTN_BACK = "🔙 بازگشت به منوی اصلی";
 
 // هر کدوم از این دکمه‌ها که زده بشه یعنی کاربر داره "ناوبری" می‌کنه،
