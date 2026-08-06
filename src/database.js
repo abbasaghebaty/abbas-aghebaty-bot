@@ -71,4 +71,64 @@ export async function userExists(db, telegramId) {
     console.error("Check user failed:", error);
     return false;
   }
+export async function setUserState(db, telegramId, state) {
+
+  await db.prepare(`
+    INSERT INTO user_states
+    (telegram_id,state)
+    VALUES (?,?)
+    ON CONFLICT(telegram_id)
+    DO UPDATE SET state=excluded.state
+  `)
+  .bind(
+    telegramId,
+    state
+  )
+  .run();
+
+}
+
+
+
+export async function getUserState(db, telegramId) {
+
+  const result = await db.prepare(`
+    SELECT state
+    FROM user_states
+    WHERE telegram_id=?
+  `)
+  .bind(telegramId)
+  .first();
+
+
+  return result?.state || null;
+
+}
+
+
+
+export async function clearUserState(db, telegramId) {
+
+  await db.prepare(`
+    DELETE FROM user_states
+    WHERE telegram_id=?
+  `)
+  .bind(telegramId)
+  .run();
+
+}
+
+
+
+export async function getUser(db, telegramId){
+
+  return await db.prepare(`
+    SELECT *
+    FROM users
+    WHERE telegram_id=?
+  `)
+  .bind(telegramId)
+  .first();
+
+}
 }
