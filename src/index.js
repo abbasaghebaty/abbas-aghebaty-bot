@@ -190,6 +190,7 @@ function createBot(env) {
 
   bot.hears(BTN_SKILLS, async (ctx) => {
   await ctx.reply(SKILLS_TEXT, {
+    parse_mode: "Markdown",
     reply_markup: skillsKeyboard()
   });
 });
