@@ -41,6 +41,8 @@ const ANON_INTRO_TEXT = `💬 ارسال پیام ناشناس
 const INSTAGRAM_LINK = "https://instagram.com/your_id";
 const YOUTUBE_LINK = "https://youtube.com/@your_channel";
 const TELEGRAM_LINK = "https://t.me/your_channel";
+const KAVEH_BOT_LINK = "https://YOUR_BOT_LINK";
+const KAVEH_CHANNEL_LINK = "https://YOUR_CHANNEL_LINK";
 
 // ============================================================
 //  متن دکمه‌ها (به عنوان ثابت، تا هم کیبورد و هم hears دقیقاً یکی باشن)
@@ -76,6 +78,12 @@ function socialsKeyboard() {
     .text(BTN_YOUTUBE).row()
     .text(BTN_BACK).row()
     .resized();
+
+  function buyKeyboard() {
+  return new InlineKeyboard()
+    .url("🤖 ربات کاوه", KAVEH_BOT_LINK)
+    .url("📢 کانال کاوه", KAVEH_CHANNEL_LINK);
+}
 
   // برای افزودن لینک بیشتر در آینده: یک .text("...").row() دیگر
   // اینجا و یک bot.hears(...) متناظر برایش در پایین اضافه کن
