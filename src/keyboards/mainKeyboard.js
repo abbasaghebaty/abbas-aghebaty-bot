@@ -1,14 +1,18 @@
-import { InlineKeyboard } from "grammy";
+import { Keyboard } from "grammy";
 import content from "../data/content.js";
 
 export function mainKeyboard() {
+
   const { buttons } = content;
-  return new InlineKeyboard()
-    .text(buttons.about, "about")
+
+  return new Keyboard()
+    .text(buttons.about)
     .row()
-    .text(buttons.social, "social")
+    .text(buttons.social)
     .row()
-    .text(buttons.anonymous, "anonymous")
+    .text(buttons.anonymous)
     .row()
-    .text(buttons.buy, "buy");
+    .text(buttons.buy)
+    .resized();
+
 }
