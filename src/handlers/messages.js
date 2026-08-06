@@ -1,58 +1,78 @@
 import content from "../data/content.js";
 import {
- getUserState,
- clearUserState,
- getUser
+  getUserState,
+  clearUserState,
+  getUser
 } from "../database.js";
 
 
-
-export function setupMessages(bot){
-
-
-bot.on("message:text", async(ctx)=>{
+export function setupMessages(bot) {
 
 
-try{
+  // دریافت پیام کاربران
+
+  bot.on(
+    "message:text",
+    async (ctx) => {
 
 
-if(ctx.message.text.startsWith("/")){
- return;
-}
+      try {
 
 
-
-const state = await getUserState(
- ctx.env.DB,
- ctx.from.id
-);
-
-
-
-if(state==="anonymous"){
+        // دستورها را رد کن
+        if (
+          ctx.message.text.startsWith("/")
+        ) {
+          return;
+        }
 
 
 
-const user = await getUser(
- ctx.env.DB,
- ctx.from.id
-);
+        const state =
+          await getUserState(
+            ctx.env.DB,
+            ctx.from.id
+          );
 
 
 
-const text = `
+        if (
+          state === "anonymous"
+        ) {
+
+
+
+          const user =
+            await getUser(
+              ctx.env.DB,
+              ctx.from.id
+            );
+
+
+
+
+          const messageText = `
+
 📩 پیام ناشناس جدید
+
 
 👤 اطلاعات کاربر:
 
-ID:
+🆔 ID:
 ${user.telegram_id}
 
-Username:
-${user.username ? "@"+user.username : "ندارد"}
 
-نام:
+👤 Username:
+${
+  user.username
+  ? "@" + user.username
+  : "ندارد"
+}
+
+
+📝 نام:
 ${user.first_name || "ندارد"}
+
 
 
 💬 پیام:
@@ -60,114 +80,179 @@ ${user.first_name || "ندارد"}
 ${ctx.message.text}
 
 
+
 ━━━━━━━━━━━━
 پایان پیام
 ━━━━━━━━━━━━
+
 `;
 
 
 
-const sent = await bot.api.sendMessage(
- ctx.config.ADMIN_ID,
- text
-);
 
+          await bot.api.sendMessage(
 
+            ctx.config.ADMIN_ID,
 
-await ctx.env.DB
-.prepare(`
-UPDATE users
-SET username=username
-WHERE telegram_id=?
-`)
-.bind(ctx.from.id)
-.run();
+            messageText
 
-
-
-await clearUserState(
- ctx.env.DB,
- ctx.from.id
-);
-
-
-
-await ctx.reply(
- content.anonymous_thanks
-);
-
-
-
-return;
-
-}
-
-
-
-}
-catch(e){
-
-console.error(
-"MESSAGE ERROR:",
-e
-);
-
-}
-
-
-
-});
+          );
 
 
 
 
+          await clearUserState(
 
-// جواب دادن ادمین با ریپلای
+            ctx.env.DB,
 
-bot.on("message:text", async(ctx)=>{
+            ctx.from.id
 
-
-if(
- ctx.from.id !== ctx.config.ADMIN_ID
-) return;
+          );
 
 
 
-if(!ctx.message.reply_to_message)
- return;
+
+          await ctx.reply(
+
+            content.anonymous_thanks
+
+          );
 
 
 
-const replied =
-ctx.message.reply_to_message.text;
+          return;
+
+        }
 
 
 
-const match =
-replied.match(
-/ID:\s*(\d+)/
-);
+      } catch(error) {
+
+
+        console.error(
+          "MESSAGE ERROR:",
+          error
+        );
+
+
+      }
+
+
+    }
+  );
 
 
 
-if(!match)
- return;
+
+
+  // پاسخ ادمین با Reply
+
+  bot.on(
+    "message:text",
+    async(ctx)=>{
+
+
+      try {
 
 
 
-const userId =
-Number(match[1]);
+        // فقط خود عباس اجازه پاسخ دارد
+
+        if(
+          ctx.from.id !== ctx.config.ADMIN_ID
+        ){
+
+          return;
+
+        }
 
 
 
-await bot.api.sendMessage(
- userId,
- "📩 پاسخ عباس:\n\n"+
- ctx.message.text
-);
+
+        // باید روی پیام ریپلای شده باشد
+
+        if(
+          !ctx.message.reply_to_message
+        ){
+
+          return;
+
+        }
 
 
-});
+
+
+
+        const repliedText =
+
+        ctx.message
+        .reply_to_message
+        .text || "";
+
+
+
+
+
+
+        const match =
+
+        repliedText.match(
+          /🆔 ID:\s*\n?(\d+)/
+        );
+
+
+
+
+
+
+        if(!match){
+
+          return;
+
+        }
+
+
+
+
+
+
+        const userId =
+
+        Number(
+          match[1]
+        );
+
+
+
+
+
+
+        await bot.api.sendMessage(
+
+          userId,
+
+          "📩 پاسخ عباس:\n\n" +
+          ctx.message.text
+
+        );
+
+
+
+
+      } catch(error){
+
+
+        console.error(
+          "ADMIN REPLY ERROR:",
+          error
+        );
+
+
+      }
+
+
+    }
+  );
 
 
 
