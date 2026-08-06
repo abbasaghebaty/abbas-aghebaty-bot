@@ -26,7 +26,7 @@ const BTN_SKILLS_LIST = "🛠 مهارت‌ها";
 const BTN_PROJECTS = "🚀 پروژه‌ها";
 
 
-const SKILLS_LIST_TEXT = `‌🚀 *مهارت‌ها*
+const SKILLS_LIST_TEXT = `‌🚀 <b>مهارت‌ها</b>
 
 • توسعه وب مدرن با HTML، CSS، JavaScript و طراحی رابط‌های کاربری واکنش‌گرا
 
@@ -38,33 +38,32 @@ const SKILLS_LIST_TEXT = `‌🚀 *مهارت‌ها*
 
 • کار با Cloudflare Workers، Webhook، KV و D1 Database
 
-• ویرایش و تدوین ، طراحی کاور و تامنیل، ادیت ویدیوهای لانگ و بهینه‌سازی محتوای چندرسانه‌ای
+• ویرایش و تدوین، طراحی کاور و تامنیل، ادیت ویدیوهای لانگ‌فرم و بهینه‌سازی محتوای چندرسانه‌ای
 
 • طراحی رابط کاربری (UI/UX) و ایجاد تجربه کاربری جذاب
 
-*و همیشه درحال یادگیری و توسعه مهارت‌های جدید هستم* 🌱
-`;
+<b>و همیشه درحال یادگیری و توسعه مهارت‌های جدید هستم</b> 🌱`;
 
 
-const PROJECTS_TEXT = `🚀 پروژه‌ها
+const PROJECTS_TEXT = `‌🚀 <b>پروژه‌ها</b>
 
-📌 [Image Resolution Enhancer](https://abbasaghebaty.github.io/Increase-photo-resolotion/)
+📌 <a href="https://abbasaghebaty.github.io/Increase-photo-resolotion/">Image Resolution Enhancer</a>
 ابزار تحت وب برای افزایش کیفیت و رزولوشن تصاویر با رابط کاربری ساده و کاربردی.
 
-📌 [Caption Generator](https://abbasaghebaty.github.io/Caption-Generator/)
+📌 <a href="https://abbasaghebaty.github.io/Caption-Generator/">Caption Generator</a>
 ابزار تولید و مدیریت کپشن برای شبکه‌های اجتماعی با قابلیت آماده‌سازی متن‌های حرفه‌ای برای انتشار محتوا.
 
-📌 [YourClean Bot](https://t.me/YourClean_bot)
-ربات تلگرامی فروشگاهی برای مدیریت ارتباط با کاربران، معرفی محصولات و ارائه خدمات آنلاین.
+📌 <a href="https://t.me/YourClean_bot">YourClean Bot</a>
+ربات تلگرامی فروشگاهی برای معرفی محصولات، ارتباط با کاربران و ارائه خدمات آنلاین.
 
-📌 [Shoma Shop](http://shoma-shop.ir/)
-وب‌سایت فروشگاهی با طراحی اختصاصی برای معرفی محصولات، نمایش اطلاعات کالاها و ایجاد تجربه خرید آنلاین.
+📌 <a href="http://shoma-shop.ir/">Shoma Shop</a>
+وب‌سایت فروشگاهی با طراحی اختصاصی برای معرفی محصولات و ایجاد تجربه خرید آنلاین.
 
-📌 [Abbas Assistant Bot](https://t.me/abbas_aghebaty_bot)
-دستیار شخصی تلگرامی با قابلیت تعامل با کاربران، نمایش اطلاعات، ارائه خدمات و مدیریت درخواست‌ها.
+📌 <a href="https://t.me/abbas_aghebaty_bot">Abbas Assistant Bot</a>
+دستیار شخصی تلگرامی با قابلیت تعامل با کاربران، نمایش اطلاعات و مدیریت درخواست‌ها.
 
-📌 [Personal Portfolio Website](https://abbasaghebaty.github.io/about-me/)
-وب‌سایت شخصی معرفی مهارت‌ها، پروژه‌ها و مسیر توسعه حرفه‌ای با طراحی مدرن و واکنش‌گرا.`;
+📌 <a href="https://abbasaghebaty.github.io/about-me/">Personal Portfolio Website</a>
+وب‌سایت شخصی معرفی مهارت‌ها، پروژه‌ها و مسیر توسعه حرفه‌ای.`;
 
 const BUY_TEXT = `🛒 خرید فیلترشکن ویتوری
 
@@ -226,11 +225,11 @@ function createBot(env) {
   });
 
   // ---------- دریافت هر پیام دیگر (برای اشکال‌زدایی) ----------
- bot.callbackQuery("skills_list", async (ctx) => {
+bot.callbackQuery("skills_list", async (ctx) => {
   await ctx.answerCallbackQuery();
 
   await ctx.editMessageText(SKILLS_LIST_TEXT, {
-    parse_mode: "Markdown",
+    parse_mode: "HTML",
     reply_markup: backToSkillsKeyboard()
   });
 });
@@ -240,7 +239,7 @@ bot.callbackQuery("projects", async (ctx) => {
   await ctx.answerCallbackQuery();
 
   await ctx.editMessageText(PROJECTS_TEXT, {
-    parse_mode: "Markdown",
+    parse_mode: "HTML",
     reply_markup: backToSkillsKeyboard()
   });
 });
