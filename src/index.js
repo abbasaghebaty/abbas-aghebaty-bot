@@ -1,4 +1,3 @@
-// src/index.js
 import { Bot, webhookCallback } from "grammy";
 import { loadConfig } from "./config.js";
 import { initDB } from "./database.js";
@@ -12,6 +11,7 @@ let handleUpdate;
 
 function createBot(env) {
   const config = loadConfig(env);
+
   const bot = new Bot(config.BOT_TOKEN);
 
   bot.use(async (ctx, next) => {
@@ -34,7 +34,9 @@ function createBot(env) {
 export default {
   async fetch(request, env, ctx) {
     try {
+
       if (!bot) {
+
         bot = createBot(env);
 
         if (env.DB && !initialized) {
@@ -47,23 +49,43 @@ export default {
         }
 
         handleUpdate = webhookCallback(
-  bot,
-  "cloudflare"
-);
-
-      if (request.method === "POST") {
-        return await handleUpdate(request, env, ctx);
+          bot,
+          "cloudflare"
+        );
       }
 
-      return new Response("🤖 Abbas Assistant Bot is running.", {
-        status: 200
-      });
-    } catch (error) {
-      console.error("WORKER ERROR:", error);
 
-      return new Response("Internal Server Error", {
-        status: 500
-      });
+      if (request.method === "POST") {
+        return await handleUpdate(
+          request,
+          env,
+          ctx
+        );
+      }
+
+
+      return new Response(
+        "🤖 Abbas Assistant Bot is running.",
+        {
+          status: 200
+        }
+      );
+
+
+    } catch (error) {
+
+      console.error(
+        "WORKER ERROR:",
+        error
+      );
+
+      return new Response(
+        "Internal Server Error",
+        {
+          status: 500
+        }
+      );
+
     }
   }
 };
