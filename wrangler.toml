@@ -7,5 +7,7 @@ binding = "DB"
 database_name = "abbas-aghebaty-bot"
 database_id = "df9f5c73-eedb-4352-bde6-5b8aea6167e0"
 
+ADMIN_ID = "7548075013"
+
 [observability]
 enabled = false
