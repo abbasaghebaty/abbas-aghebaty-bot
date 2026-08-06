@@ -1,4 +1,4 @@
-// database.js
+// src/database.js
 export async function initDB(db) {
   await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
