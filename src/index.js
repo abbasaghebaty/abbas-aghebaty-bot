@@ -39,8 +39,8 @@ const ANON_INTRO_TEXT = `💬 ارسال پیام ناشناس
 
 // لینک‌های شبکه‌های اجتماعی — اینجا لینک واقعی رو جایگزین کن
 const INSTAGRAM_LINK = "https://instagram.com/your_id";
-const TELEGRAM_LINK = "https://t.me/your_channel";
 const YOUTUBE_LINK = "https://youtube.com/@your_channel";
+const TELEGRAM_LINK = "https://t.me/your_channel";
 
 // ============================================================
 //  متن دکمه‌ها (به عنوان ثابت، تا هم کیبورد و هم hears دقیقاً یکی باشن)
@@ -76,6 +76,13 @@ function socialsKeyboard() {
     .text(BTN_YOUTUBE).row()
     .text(BTN_BACK).row()
     .resized();
+
+  function buyKeyboard() {
+  return new InlineKeyboard()
+    .url("🤖 ربات کاوه", "https://YOUR_BOT_LINK")
+    .url("📢 کانال کاوه", "https://YOUR_CHANNEL_LINK");
+}
+  
   // برای افزودن لینک بیشتر در آینده: یک .text("...").row() دیگر
   // اینجا و یک bot.hears(...) متناظر برایش در پایین اضافه کن
 }
@@ -137,8 +144,10 @@ function createBot(env) {
   });
 
   bot.hears(BTN_BUY, async (ctx) => {
-    await ctx.reply(BUY_TEXT);
+  await ctx.reply(BUY_TEXT, {
+    reply_markup: buyKeyboard(),
   });
+});
 
   bot.hears(BTN_ANON, async (ctx) => {
     await ctx.reply(ANON_INTRO_TEXT, { reply_markup: anonKeyboard() });
