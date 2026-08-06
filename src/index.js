@@ -1,7 +1,7 @@
 import { Bot, InlineKeyboard, Keyboard, webhookCallback } from "grammy";
 
 // ============================================================
-//  متن‌ها (Texts) — همه‌ی متن‌های ثابت ربات اینجاست تا راحت ویرایش شوند
+//  متن‌ها
 // ============================================================
 const WELCOME_TEXT = `سلام.
 من منشی عباس هستم.
@@ -37,18 +37,16 @@ const ANON_INTRO_TEXT = `💬 ارسال پیام ناشناس
 
 از طریق یکی از ربات‌های زیر می‌تونی به‌صورت ناشناس باهام در ارتباط باشی 👇`;
 
-// لینک‌های شبکه‌های اجتماعی — اینجا لینک واقعی رو جایگزین کن
 const INSTAGRAM_LINK = "https://instagram.com/your_id";
 const YOUTUBE_LINK = "https://youtube.com/@your_channel";
 const TELEGRAM_LINK = "https://t.me/your_channel";
 
-// ⚠️ این دو لینک قبلاً مقدار نامعتبر داشتند → حالا یک نمونه آدرس t.me جایگزین شده
-// لطفاً قبل از استفاده، آنها را با لینک واقعی ربات و کانال کاوه عوض کنید
-const KAVEH_BOT_LINK = "https://t.me/kaveh_support_bot";     // <-- آدرس واقعی ربات پشتیبانی
-const KAVEH_CHANNEL_LINK = "https://t.me/kaveh_channel";     // <-- آدرس واقعی کانال
+// ⚠️ حتماً لینک‌های واقعی ربات و کانال کاوه را اینجا بگذار
+const KAVEH_BOT_LINK = "https://t.me/kaveh_support_bot";
+const KAVEH_CHANNEL_LINK = "https://t.me/kaveh_channel";
 
 // ============================================================
-//  متن دکمه‌ها (به عنوان ثابت، تا هم کیبورد و هم hears دقیقاً یکی باشن)
+//  متن دکمه‌ها
 // ============================================================
 const BTN_SOCIALS = "🌐 شبکه‌های اجتماعی";
 const BTN_SKILLS = "🛠 مهارت‌ها و پروژه‌ها";
@@ -62,7 +60,7 @@ const BTN_YOUTUBE = "🎬 یوتیوب";
 const BTN_BACK = "🔙 بازگشت به منوی اصلی";
 
 // ============================================================
-//  کیبوردها (Keyboards) — همه ستونی (هر دکمه توی یک ردیف جدا)
+//  کیبوردها
 // ============================================================
 function mainKeyboard() {
   return new Keyboard()
@@ -96,7 +94,7 @@ function anonKeyboard() {
 }
 
 // ============================================================
-//  توابع کمکی دیتابیس (D1 helpers)
+//  توابع کمکی دیتابیس
 // ============================================================
 async function upsertUser(db, from) {
   await db
@@ -112,12 +110,11 @@ async function upsertUser(db, from) {
 }
 
 // ============================================================
-//  ساخت ربات (Bot factory)
+//  ساخت ربات
 // ============================================================
 function createBot(env) {
   const bot = new Bot(env.BOT_TOKEN);
 
-  // ---------- میان‌افزار سراسری: ذخیره‌ی خودکار هر کاربر ----------
   bot.use(async (ctx, next) => {
     if (ctx.from) {
       await upsertUser(env.DB, ctx.from);
@@ -125,12 +122,11 @@ function createBot(env) {
     await next();
   });
 
-  // ---------- /start : همیشه کاربر را به منوی اصلی برمی‌گرداند ----------
   bot.command("start", async (ctx) => {
     await ctx.reply(WELCOME_TEXT, { reply_markup: mainKeyboard() });
   });
 
-  // ---------- منوی اصلی ----------
+  // ---------- منوی اصلی (استفاده از الگوی مقاوم برای دکمه خرید) ----------
   bot.hears(BTN_SOCIALS, async (ctx) => {
     await ctx.reply(SOCIAL_INTRO_TEXT, { reply_markup: socialsKeyboard() });
   });
@@ -143,10 +139,9 @@ function createBot(env) {
     await ctx.reply(ABOUT_TEXT);
   });
 
-  bot.hears(BTN_BUY, async (ctx) => {
-    await ctx.reply(BUY_TEXT, {
-      reply_markup: buyKeyboard(),
-    });
+  // دکمه خرید: تطابق با regex تا هرگونه نویسه مخفی یا فاصله اضافه نادیده گرفته شود
+  bot.hears(/خرید فیلترشکن/i, async (ctx) => {
+    await ctx.reply(BUY_TEXT, { reply_markup: buyKeyboard() });
   });
 
   bot.hears(BTN_ANON, async (ctx) => {
@@ -170,11 +165,14 @@ function createBot(env) {
     await ctx.reply(BACK_TO_MENU_TEXT, { reply_markup: mainKeyboard() });
   });
 
-  // ---------- هر پیام متنی دیگر ----------
+  // ---------- دریافت هر پیام دیگر (برای اشکال‌زدایی) ----------
   bot.on("message:text", async (ctx) => {
-    await ctx.reply("برای شروع از منوی زیر استفاده کن 👇", {
-      reply_markup: mainKeyboard(),
-    });
+    const received = ctx.message.text;
+    // متن دریافتی را به خود کاربر برمی‌گردانیم تا اگر دکمه‌ای کار نکرد، ببینیم چه چیزی ارسال شده
+    await ctx.reply(
+      `🔍 متن دریافتی: "${received}"\n\nاگر این متن مربوط به دکمه‌ای هست که جواب نداد، لطفاً ادمین رو مطلع کن.`,
+      { reply_markup: mainKeyboard() }
+    );
   });
 
   return bot;
@@ -192,7 +190,7 @@ export default {
       try {
         return await webhookCallback(bot, "cloudflare-mod")(request);
       } catch (err) {
-        console.error("Unhandled webhook error:", err);
+        console.error("Webhook error:", err);
         return new Response("OK");
       }
     }
@@ -200,9 +198,7 @@ export default {
     if (url.pathname === "/register-webhook") {
       const webhookUrl = `${url.origin}/webhook`;
       const res = await fetch(
-        `https://api.telegram.org/bot${env.BOT_TOKEN}/setWebhook?url=${encodeURIComponent(
-          webhookUrl
-        )}`
+        `https://api.telegram.org/bot${env.BOT_TOKEN}/setWebhook?url=${encodeURIComponent(webhookUrl)}`
       );
       return new Response(await res.text(), {
         headers: { "content-type": "application/json" },
