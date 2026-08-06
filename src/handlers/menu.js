@@ -1,48 +1,98 @@
-import { InlineKeyboard } from "grammy";
+import { InlineKeyboard, Keyboard } from "grammy";
 import content from "../data/content.js";
-import { setUserState } from "../database.js";
+import { setUserState, saveUser } from "../database.js";
+
+
+
+function anonymousKeyboard(){
+
+  return new Keyboard()
+    .text("✅ ارسال")
+    .text("❌ لغو")
+    .resized();
+
+}
+
 
 
 export function setupMenu(bot) {
+
+
+
+  // قبل از اجرای هر دکمه اطلاعات کاربر آپدیت شود
+
+  bot.on("message:text", async(ctx,next)=>{
+
+
+    if(
+      ctx.env?.DB &&
+      ctx.from
+    ){
+
+      await saveUser(
+        ctx.env.DB,
+        ctx.from
+      );
+
+    }
+
+
+    await next();
+
+
+  });
+
+
+
+
+
 
 
   // شبکه های اجتماعی
 
   bot.hears(
     content.buttons.social,
-    async (ctx) => {
 
-      const keyboard = new InlineKeyboard()
+    async(ctx)=>{
 
-        .url(
-          "📸 اینستاگرام",
-          "https://instagram.com/abbas"
-        )
 
-        .row()
+      const keyboard =
+      new InlineKeyboard()
 
-        .url(
-          "✈️ تلگرام",
-          "https://t.me/abbas"
-        )
+      .url(
+        "📸 اینستاگرام",
+        "https://instagram.com/abbas"
+      )
 
-        .row()
+      .row()
 
-        .url(
-          "▶️ یوتیوب",
-          "https://youtube.com/"
-        );
+      .url(
+        "✈️ تلگرام",
+        "https://t.me/abbas"
+      )
+
+      .row()
+
+      .url(
+        "▶️ یوتیوب",
+        "https://youtube.com/"
+      );
+
 
 
       await ctx.reply(
         "🌐 شبکه‌های اجتماعی:",
         {
-          reply_markup: keyboard
+          reply_markup:keyboard
         }
       );
 
+
     }
   );
+
+
+
 
 
 
@@ -52,14 +102,21 @@ export function setupMenu(bot) {
 
   bot.hears(
     content.buttons.about,
-    async (ctx) => {
+
+    async(ctx)=>{
+
 
       await ctx.reply(
         content.about
       );
 
+
     }
   );
+
+
+
+
 
 
 
@@ -69,12 +126,15 @@ export function setupMenu(bot) {
 
   bot.hears(
     content.buttons.buy,
-    async (ctx) => {
+
+    async(ctx)=>{
+
 
       await ctx.reply(
         content.buy_text
       );
 
+
     }
   );
 
@@ -83,28 +143,44 @@ export function setupMenu(bot) {
 
 
 
-  // پیام ناشناس
+
+
+
+  // شروع پیام ناشناس
 
   bot.hears(
     content.buttons.anonymous,
 
-    async (ctx) => {
+    async(ctx)=>{
 
 
       await setUserState(
+
         ctx.env.DB,
+
         ctx.from.id,
+
         "waiting_anonymous"
+
       );
 
 
+
       await ctx.reply(
-        "✍️ پیام خود را وارد کنید:"
+
+        "✍️ پیام خود را وارد کنید:",
+
+        {
+          reply_markup:
+          anonymousKeyboard()
+        }
+
       );
 
 
     }
   );
+
 
 
 }
