@@ -230,6 +230,7 @@ function createBot(env) {
   await ctx.answerCallbackQuery();
 
   await ctx.editMessageText(SKILLS_LIST_TEXT, {
+    parse_mode: "Markdown",
     reply_markup: backToSkillsKeyboard()
   });
 });
@@ -239,6 +240,7 @@ bot.callbackQuery("projects", async (ctx) => {
   await ctx.answerCallbackQuery();
 
   await ctx.editMessageText(PROJECTS_TEXT, {
+    parse_mode: "Markdown",
     reply_markup: backToSkillsKeyboard()
   });
 });
