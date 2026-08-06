@@ -77,14 +77,14 @@ function socialsKeyboard() {
     .text(BTN_BACK).row()
     .resized();
 
-  function buyKeyboard() {
+  // برای افزودن لینک بیشتر در آینده: یک .text("...").row() دیگر
+  // اینجا و یک bot.hears(...) متناظر برایش در پایین اضافه کن
+}
+
+function buyKeyboard() {
   return new InlineKeyboard()
     .url("🤖 ربات کاوه", "https://YOUR_BOT_LINK")
     .url("📢 کانال کاوه", "https://YOUR_CHANNEL_LINK");
-}
-  
-  // برای افزودن لینک بیشتر در آینده: یک .text("...").row() دیگر
-  // اینجا و یک bot.hears(...) متناظر برایش در پایین اضافه کن
 }
 
 function anonKeyboard() {
