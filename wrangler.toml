@@ -7,5 +7,19 @@ binding = "DB"
 database_name = "abbas-aghebaty-bot"
 database_id = "df9f5c73-eedb-4352-bde6-5b8aea6167e0"
 
+
+
 [observability]
 enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
