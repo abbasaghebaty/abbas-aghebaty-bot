@@ -1,31 +1,16 @@
-import { InlineKeyboard, Keyboard } from "grammy";
+import { InlineKeyboard } from "grammy";
 import content from "../data/content.js";
-import { setUserState, saveUser } from "../database.js";
-
-
-function anonymousKeyboard() {
-
-  return new Keyboard()
-    .text("✅ ارسال")
-    .text("❌ لغو")
-    .resized();
-
-}
+import { setUserState } from "../database.js";
 
 
 export function setupMenu(bot) {
 
 
+  // شبکه های اجتماعی
+
   bot.hears(
     content.buttons.social,
     async (ctx) => {
-
-
-      await saveUser(
-        ctx.env.DB,
-        ctx.from
-      );
-
 
       const keyboard = new InlineKeyboard()
 
@@ -56,49 +41,39 @@ export function setupMenu(bot) {
         }
       );
 
-
     }
   );
 
 
+
+
+
+  // درباره من
 
   bot.hears(
     content.buttons.about,
     async (ctx) => {
 
-
-      await saveUser(
-        ctx.env.DB,
-        ctx.from
-      );
-
-
       await ctx.reply(
         content.about
       );
-
 
     }
   );
 
 
 
+
+
+  // خرید
 
   bot.hears(
     content.buttons.buy,
     async (ctx) => {
 
-
-      await saveUser(
-        ctx.env.DB,
-        ctx.from
-      );
-
-
       await ctx.reply(
         content.buy_text
       );
-
 
     }
   );
@@ -107,15 +82,13 @@ export function setupMenu(bot) {
 
 
 
+
+  // پیام ناشناس
+
   bot.hears(
     content.buttons.anonymous,
+
     async (ctx) => {
-
-
-      await saveUser(
-        ctx.env.DB,
-        ctx.from
-      );
 
 
       await setUserState(
@@ -126,10 +99,7 @@ export function setupMenu(bot) {
 
 
       await ctx.reply(
-        "✍️ پیام خود را وارد کنید:",
-        {
-          reply_markup: anonymousKeyboard()
-        }
+        "✍️ پیام خود را وارد کنید:"
       );
 
 
