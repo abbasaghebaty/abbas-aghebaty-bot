@@ -1,18 +1,15 @@
 {
   "name": "abbas-assistant-bot",
   "version": "1.0.0",
-  "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "db:create": "wrangler d1 create abbas_bot_db",
-    "db:init": "wrangler d1 execute abbas_bot_db --file=./schema.sql",
-    "db:init:remote": "wrangler d1 execute abbas_bot_db --file=./schema.sql --remote",
-    "secret:bot-token": "wrangler secret put BOT_TOKEN"
+    "deploy": "wrangler deploy"
   },
-{
   "dependencies": {
-    "grammy": "^1.21.1"
+    "grammy": "1.21.1"
+  },
+  "devDependencies": {
+    "wrangler": "3.60.0"
   }
 }
