@@ -297,6 +297,11 @@ bot.callbackQuery("back_skills", async (ctx) => {
 
 // ---------- دریافت هر پیام دیگر ----------
 bot.on("message:text", async (ctx) => {
+
+  if (ctx.message.text === BTN_BACK) {
+    return;
+  }
+
   await ctx.reply(
     "متوجه نشدم 🤔 لطفاً از منوی زیر انتخاب کنید:",
     { reply_markup: mainKeyboard() }
