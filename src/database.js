@@ -1,57 +1,54 @@
 export async function initDB(db) {
 
-  try {
-
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        telegram_id INTEGER UNIQUE NOT NULL,
-        username TEXT,
-        first_name TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-      )
-    `).run();
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      telegram_id INTEGER UNIQUE NOT NULL,
+      username TEXT,
+      first_name TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
 
 
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS user_states (
-        telegram_id INTEGER PRIMARY KEY,
-        state TEXT
-      )
-    `).run();
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS user_states (
+      telegram_id INTEGER PRIMARY KEY,
+      state TEXT,
+      message TEXT
+    )
+  `).run();
 
 
-    console.log("Database initialized");
-
-
-  } catch(error) {
-
-    console.error(
-      "Database init failed:",
-      error
-    );
-
-    throw error;
-
-  }
+  console.log("Database initialized");
 
 }
 
 
 
+
 export async function saveUser(db, user) {
+
 
   if(!user?.id) return;
 
 
   await db.prepare(`
-    INSERT OR IGNORE INTO users
+    INSERT INTO users
     (
       telegram_id,
       username,
       first_name
     )
     VALUES (?,?,?)
+
+    ON CONFLICT(telegram_id)
+
+    DO UPDATE SET
+
+    username=excluded.username,
+
+    first_name=excluded.first_name
   `)
   .bind(
     user.id,
@@ -60,11 +57,13 @@ export async function saveUser(db, user) {
   )
   .run();
 
+
 }
 
 
 
-export async function getUser(db, telegramId) {
+
+export async function getUser(db, telegramId){
 
   return await db.prepare(`
     SELECT *
@@ -78,64 +77,73 @@ export async function getUser(db, telegramId) {
 
 
 
+
 export async function setUserState(
   db,
   telegramId,
-  state
-) {
+  state,
+  message=null
+){
 
-  await db.prepare(`
-    INSERT INTO user_states
-    (
-      telegram_id,
-      state
-    )
-    VALUES (?,?)
-
-    ON CONFLICT(telegram_id)
-    DO UPDATE SET state=excluded.state
-  `)
-  .bind(
-    telegramId,
-    state
+ await db.prepare(`
+  INSERT INTO user_states
+  (
+   telegram_id,
+   state,
+   message
   )
-  .run();
+
+  VALUES (?,?,?)
+
+  ON CONFLICT(telegram_id)
+
+  DO UPDATE SET
+
+  state=excluded.state,
+
+  message=excluded.message
+ `)
+ .bind(
+   telegramId,
+   state,
+   message
+ )
+ .run();
+
 
 }
+
 
 
 
 export async function getUserState(
-  db,
-  telegramId
-) {
+ db,
+ telegramId
+){
 
-  const result =
-    await db.prepare(`
-      SELECT state
-      FROM user_states
-      WHERE telegram_id=?
-    `)
-    .bind(telegramId)
-    .first();
-
-
-  return result?.state || null;
+ return await db.prepare(`
+  SELECT *
+  FROM user_states
+  WHERE telegram_id=?
+ `)
+ .bind(telegramId)
+ .first();
 
 }
 
 
 
-export async function clearUserState(
-  db,
-  telegramId
-) {
 
-  await db.prepare(`
-    DELETE FROM user_states
-    WHERE telegram_id=?
-  `)
-  .bind(telegramId)
-  .run();
+export async function clearUserState(
+ db,
+ telegramId
+){
+
+ await db.prepare(`
+  DELETE FROM user_states
+  WHERE telegram_id=?
+ `)
+ .bind(telegramId)
+ .run();
 
 }
