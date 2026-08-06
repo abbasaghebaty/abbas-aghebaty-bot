@@ -212,21 +212,55 @@ function createBot(env) {
   });
 
   // ---------- زیرمنوی شبکه‌های اجتماعی ----------
-  bot.hears(BTN_INSTAGRAM, async (ctx) => {
-    await ctx.reply(`📷 اینستاگرام:\n${INSTAGRAM_LINK}`);
-  });
+ bot.hears(BTN_INSTAGRAM, async (ctx) => {
+  await ctx.reply(
+    `📷 <b>اینستاگرام</b>
 
-  bot.hears(BTN_TELEGRAM, async (ctx) => {
-    await ctx.reply(`📢 تلگرام:\n${TELEGRAM_LINK}`);
-  });
+تولید محتوا، پشت صحنه پروژه‌ها، طراحی‌ها و فعالیت‌های روزمره من در اینستاگرام.
 
-  bot.hears(BTN_YOUTUBE, async (ctx) => {
-    await ctx.reply(`🎬 یوتیوب:\n${YOUTUBE_LINK}`);
-  });
+🔗 <a href="${INSTAGRAM_LINK}">مشاهده صفحه اینستاگرام</a>`,
+    {
+      parse_mode: "HTML",
+      link_preview_options: {
+        is_disabled: true
+      }
+    }
+  );
+});
 
-  bot.hears(BTN_BACK, async (ctx) => {
-    await ctx.reply(BACK_TO_MENU_TEXT, { reply_markup: mainKeyboard() });
-  });
+
+bot.hears(BTN_TELEGRAM, async (ctx) => {
+  await ctx.reply(
+    `📢 <b>تلگرام</b>
+
+کانال و ارتباط مستقیم من در تلگرام برای دنبال کردن پروژه‌ها، اطلاع‌رسانی‌ها و محتواهای جدید.
+
+🔗 <a href="${TELEGRAM_LINK}">ورود به تلگرام</a>`,
+    {
+      parse_mode: "HTML",
+      link_preview_options: {
+        is_disabled: true
+      }
+    }
+  );
+});
+
+
+bot.hears(BTN_YOUTUBE, async (ctx) => {
+  await ctx.reply(
+    `🎬 <b>یوتیوب</b>
+
+ویدیوهای آموزشی، پروژه‌ها، تست‌ها و محتوای ویدیویی من در یوتیوب.
+
+🔗 <a href="${YOUTUBE_LINK}">مشاهده کانال یوتیوب</a>`,
+    {
+      parse_mode: "HTML",
+      link_preview_options: {
+        is_disabled: true
+      }
+    }
+  );
+});
 
   // ---------- دریافت هر پیام دیگر (برای اشکال‌زدایی) ----------
 bot.callbackQuery("skills_list", async (ctx) => {
