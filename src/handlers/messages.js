@@ -1,10 +1,10 @@
+// src/handlers/messages.js
 import content from "../data/content.js";
 
 export function setupMessages(bot) {
   bot.on("message:text", async (ctx) => {
-    // در این نسخه فقط پیام‌های ناشناس احتمالی را می‌گیریم
-    // (برای سادگی فعلاً هیچ کاری انجام نمی‌دهد)
-    // می‌توانیم بعداً از session برای تشخیص استفاده کنیم
+    // نسخه ساده: فعلاً هر پیام متنی را بعنوان پیام ناشناس تلقی می‌کنیم
+    // (در آینده با session مدیریت خواهد شد)
     await ctx.reply(content.anonymous_thanks);
   });
 }
