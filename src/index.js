@@ -5,7 +5,8 @@ import { setupStart } from "./handlers/start.js";
 import { setupMenu } from "./handlers/menu.js";
 import { setupMessages } from "./handlers/messages.js";
 
-let dbInitialized = false;
+let bot = null;
+let initialized = false;
 
 export default {
   async fetch(request, env) {
@@ -16,29 +17,41 @@ export default {
     }
 
     try {
-      const config = loadConfig(env);
+      if (!bot) {
+        const config = loadConfig(env);
 
-      if (!dbInitialized && config.DB) {
-        await initDB(config.DB);
-        dbInitialized = true;
+        bot = new Bot(config.BOT_TOKEN);
+
+        bot.use(async (ctx, next) => {
+          ctx.env = env;
+          ctx.config = config;
+          await next();
+        });
+
+        if (!initialized && config.DB) {
+          try {
+            await initDB(config.DB);
+            initialized = true;
+          } catch (e) {
+            console.error("D1 Init Error:", e);
+          }
+        }
+
+        setupStart(bot);
+        setupMenu(bot);
+        setupMessages(bot);
+
+        bot.catch((err) => {
+          console.error("Bot Error:", err);
+        });
       }
 
-      const bot = new Bot(config.BOT_TOKEN);
-
-      bot.use((ctx, next) => {
-        ctx.config = config;
-        ctx.env = env;
-        return next();
-      });
-
-      setupStart(bot);
-      setupMenu(bot);
-      setupMessages(bot);
-
       return await bot.fetch(request);
-    } catch (error) {
-      console.error("Bot error:", error);
-      return new Response("Internal Server Error", { status: 500 });
+    } catch (err) {
+      console.error("Worker Error:", err);
+      return new Response("Internal Server Error", {
+        status: 500,
+      });
     }
   },
 };
