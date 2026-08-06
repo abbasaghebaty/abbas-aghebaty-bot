@@ -17,9 +17,34 @@ const ABOUT_TEXT = `👤 درباره من
 
 const SKILLS_TEXT = `🛠 مهارت‌ها و پروژه‌ها
 
-اینجا می‌تونید با بخشی از توانایی‌ها، تجربه‌ها و کارهایی که انجام دادم آشنا بشید.
+اینجا می‌تونید با بخشی از توانایی‌ها، تجربه‌ها و پروژه‌هایی که انجام دادم آشنا بشید.
 
-از بین گزینه‌های زیر انتخاب کنید 👇`;
+یکی از گزینه‌های زیر رو انتخاب کنید 👇`;
+
+
+const BTN_SKILLS_LIST = "🛠 مهارت‌ها";
+const BTN_PROJECTS = "🚀 پروژه‌ها";
+
+
+const SKILLS_LIST_TEXT = `🛠 مهارت‌ها
+
+اینجا متن مهارت‌های من قرار می‌گیرد...
+
+مثلاً:
+- طراحی سایت
+- JavaScript
+- Cloudflare Workers
+- تولید محتوا`;
+
+
+const PROJECTS_TEXT = `🚀 پروژه‌ها
+
+اینجا معرفی پروژه‌های من قرار می‌گیرد...
+
+مثلاً:
+- سایت شخصی
+- ربات تلگرام
+- ابزارهای تحت وب`;
 
 const BUY_TEXT = `🛒 خرید فیلترشکن ویتوری
 
@@ -93,6 +118,12 @@ function anonKeyboard() {
     .url("بگو بات", BEGO_BAT_LINK);
 }
 
+function skillsKeyboard() {
+  return new InlineKeyboard()
+    .text(BTN_PROJECTS, "projects")
+    .text(BTN_SKILLS_LIST, "skills_list");
+}
+
 // ============================================================
 //  توابع کمکی دیتابیس
 // ============================================================
@@ -132,8 +163,10 @@ function createBot(env) {
   });
 
   bot.hears(BTN_SKILLS, async (ctx) => {
-    await ctx.reply(SKILLS_TEXT);
+  await ctx.reply(SKILLS_TEXT, {
+    reply_markup: skillsKeyboard()
   });
+});
 
   bot.hears(BTN_ABOUT, async (ctx) => {
     await ctx.reply(ABOUT_TEXT);
@@ -166,17 +199,30 @@ function createBot(env) {
   });
 
   // ---------- دریافت هر پیام دیگر (برای اشکال‌زدایی) ----------
-  bot.on("message:text", async (ctx) => {
-    const received = ctx.message.text;
-    // متن دریافتی را به خود کاربر برمی‌گردانیم تا اگر دکمه‌ای کار نکرد، ببینیم چه چیزی ارسال شده
-    await ctx.reply(
-      `🔍 متن دریافتی: "${received}"\n\nاگر این متن مربوط به دکمه‌ای هست که جواب نداد، لطفاً ادمین رو مطلع کن.`,
-      { reply_markup: mainKeyboard() }
-    );
-  });
+ bot.callbackQuery("skills_list", async (ctx) => {
+  await ctx.answerCallbackQuery();
 
-  return bot;
-}
+  await ctx.reply(SKILLS_LIST_TEXT);
+});
+
+
+bot.callbackQuery("projects", async (ctx) => {
+  await ctx.answerCallbackQuery();
+
+  await ctx.reply(PROJECTS_TEXT);
+});
+
+
+// ---------- دریافت هر پیام دیگر ----------
+bot.on("message:text", async (ctx) => {
+  await ctx.reply(
+    "متوجه نشدم 🤔 لطفاً از منوی زیر انتخاب کنید:",
+    { reply_markup: mainKeyboard() }
+  );
+});
+
+
+return bot;
 
 // ============================================================
 //  ورودی Worker
