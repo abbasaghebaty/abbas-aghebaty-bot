@@ -11,10 +11,8 @@
     "db:init:remote": "wrangler d1 execute abbas_bot_db --file=./schema.sql --remote",
     "secret:bot-token": "wrangler secret put BOT_TOKEN"
   },
+{
   "dependencies": {
     "grammy": "^1.21.1"
-  },
-  "devDependencies": {
-    "wrangler": "^3.60.0"
   }
 }
