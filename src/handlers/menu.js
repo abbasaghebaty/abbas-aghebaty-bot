@@ -1,27 +1,82 @@
 // src/handlers/menu.js
+
+import { InlineKeyboard } from "grammy";
 import content from "../data/content.js";
 
+
 export function setupMenu(bot) {
-  bot.callbackQuery("about", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.reply(content.about);
-  });
 
-  bot.callbackQuery("social", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    const links = content.social_links
-      .map((l) => `• <a href="${l.url}">${l.name}</a>`)
-      .join("\n");
-    await ctx.reply(links, { parse_mode: "HTML" });
-  });
 
-  bot.callbackQuery("anonymous", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.reply(content.anonymous_prompt);
-  });
+  // شبکه های اجتماعی
+  bot.hears(
+    content.buttons.social,
+    async (ctx) => {
 
-  bot.callbackQuery("buy", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    await ctx.reply(content.buy_text);
-  });
+      const keyboard = new InlineKeyboard()
+        .url(
+          "📸 اینستاگرام",
+          "https://instagram.com/abbas"
+        )
+        .row()
+        .url(
+          "✈️ تلگرام",
+          "https://t.me/abbas"
+        )
+        .row()
+        .url(
+          "▶️ یوتیوب",
+          "https://youtube.com/"
+        );
+
+
+      await ctx.reply(
+        "🌐 شبکه‌های اجتماعی:",
+        {
+          reply_markup: keyboard
+        }
+      );
+
+    }
+  );
+
+
+  // درباره من
+  bot.hears(
+    content.buttons.about,
+    async (ctx) => {
+
+      await ctx.reply(
+        content.about
+      );
+
+    }
+  );
+
+
+  // خرید
+  bot.hears(
+    content.buttons.buy,
+    async (ctx) => {
+
+      await ctx.reply(
+        content.buy_text
+      );
+
+    }
+  );
+
+
+  // پیام ناشناس
+  bot.hears(
+    content.buttons.anonymous,
+    async (ctx) => {
+
+      await ctx.reply(
+        content.anonymous_prompt
+      );
+
+    }
+  );
+
+
 }
