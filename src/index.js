@@ -294,18 +294,24 @@ bot.callbackQuery("back_skills", async (ctx) => {
   });
 });
 
+// ---------- بازگشت به منوی اصلی ----------
+bot.hears(BTN_BACK, async (ctx) => {
+  await ctx.reply(
+    BACK_TO_MENU_TEXT,
+    {
+      reply_markup: mainKeyboard()
+    }
+  );
+});
 
 // ---------- دریافت هر پیام دیگر ----------
 bot.on("message:text", async (ctx) => {
-
-  if (ctx.message.text === BTN_BACK) {
-    return;
-  }
 
   await ctx.reply(
     "متوجه نشدم 🤔 لطفاً از منوی زیر انتخاب کنید:",
     { reply_markup: mainKeyboard() }
   );
+
 });
 
 
