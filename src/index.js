@@ -45,9 +45,7 @@ const SKILLS_LIST_TEXT = `‌🚀 <b>مهارت‌ها</b>
 <b>و همیشه درحال یادگیری و توسعه مهارت‌های جدید هستم</b> 🌱`;
 
 
-const PROJECTS_TEXT = `‌🚀 <b>پروژه‌ها</b>
-
-🌐 <b>سایت‌ها</b>
+const PROJECTS_TEXT = `‌🌐 <b>سایت‌ها</b>
 
 📌 <a href="https://abbasaghebaty.github.io/about-me/">Personal Portfolio Website</a>
 وب‌سایت شخصی معرفی مهارت‌ها، پروژه‌ها و مسیر توسعه حرفه‌ای با طراحی مدرن و واکنش‌گرا.
