@@ -1,7 +1,6 @@
-// src/handlers/menu.js
-
 import { InlineKeyboard } from "grammy";
 import content from "../data/content.js";
+import { setUserState } from "../database.js";
 
 
 export function setupMenu(bot) {
@@ -12,21 +11,28 @@ export function setupMenu(bot) {
     content.buttons.social,
     async (ctx) => {
 
+
       const keyboard = new InlineKeyboard()
+
         .url(
           "📸 اینستاگرام",
           "https://instagram.com/abbas"
         )
+
         .row()
+
         .url(
           "✈️ تلگرام",
           "https://t.me/abbas"
         )
+
         .row()
+
         .url(
           "▶️ یوتیوب",
           "https://youtube.com/"
         );
+
 
 
       await ctx.reply(
@@ -36,47 +42,84 @@ export function setupMenu(bot) {
         }
       );
 
+
     }
   );
+
+
+
 
 
   // درباره من
   bot.hears(
     content.buttons.about,
-    async (ctx) => {
+    async (ctx)=>{
+
 
       await ctx.reply(
         content.about
       );
 
+
     }
   );
+
+
+
+
+
 
 
   // خرید
   bot.hears(
     content.buttons.buy,
-    async (ctx) => {
+    async(ctx)=>{
+
 
       await ctx.reply(
         content.buy_text
       );
 
+
     }
   );
 
 
+
+
+
+
+
+
   // پیام ناشناس
+
   bot.hears(
     content.buttons.anonymous,
-    async (ctx) => {
+
+    async(ctx)=>{
+
+
+      await setUserState(
+
+        ctx.env.DB,
+
+        ctx.from.id,
+
+        "anonymous"
+
+      );
+
+
 
       await ctx.reply(
         content.anonymous_prompt
       );
 
+
     }
+
   );
+
 
 
 }
