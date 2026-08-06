@@ -41,8 +41,11 @@ const ANON_INTRO_TEXT = `💬 ارسال پیام ناشناس
 const INSTAGRAM_LINK = "https://instagram.com/your_id";
 const YOUTUBE_LINK = "https://youtube.com/@your_channel";
 const TELEGRAM_LINK = "https://t.me/your_channel";
-const KAVEH_BOT_LINK = "https://YOUR_BOT_LINK";
-const KAVEH_CHANNEL_LINK = "https://YOUR_CHANNEL_LINK";
+
+// ⚠️ این دو لینک قبلاً مقدار نامعتبر داشتند → حالا یک نمونه آدرس t.me جایگزین شده
+// لطفاً قبل از استفاده، آنها را با لینک واقعی ربات و کانال کاوه عوض کنید
+const KAVEH_BOT_LINK = "https://t.me/kaveh_support_bot";     // <-- آدرس واقعی ربات پشتیبانی
+const KAVEH_CHANNEL_LINK = "https://t.me/kaveh_channel";     // <-- آدرس واقعی کانال
 
 // ============================================================
 //  متن دکمه‌ها (به عنوان ثابت، تا هم کیبورد و هم hears دقیقاً یکی باشن)
@@ -78,9 +81,6 @@ function socialsKeyboard() {
     .text(BTN_YOUTUBE).row()
     .text(BTN_BACK).row()
     .resized();
-
-  // برای افزودن لینک بیشتر در آینده: یک .text("...").row() دیگر
-  // اینجا و یک bot.hears(...) متناظر برایش در پایین اضافه کن
 }
 
 function buyKeyboard() {
@@ -118,8 +118,6 @@ function createBot(env) {
   const bot = new Bot(env.BOT_TOKEN);
 
   // ---------- میان‌افزار سراسری: ذخیره‌ی خودکار هر کاربر ----------
-  // در هر تعامل (پیام، دستور، هر چیز دیگر) اگر آیدی کاربر در دیتابیس
-  // نبود ذخیره می‌شود، و اگر بود اطلاعاتش به‌روزرسانی می‌شود.
   bot.use(async (ctx, next) => {
     if (ctx.from) {
       await upsertUser(env.DB, ctx.from);
@@ -146,10 +144,10 @@ function createBot(env) {
   });
 
   bot.hears(BTN_BUY, async (ctx) => {
-  await ctx.reply(BUY_TEXT, {
-    reply_markup: buyKeyboard(),
+    await ctx.reply(BUY_TEXT, {
+      reply_markup: buyKeyboard(),
+    });
   });
-});
 
   bot.hears(BTN_ANON, async (ctx) => {
     await ctx.reply(ANON_INTRO_TEXT, { reply_markup: anonKeyboard() });
@@ -172,7 +170,7 @@ function createBot(env) {
     await ctx.reply(BACK_TO_MENU_TEXT, { reply_markup: mainKeyboard() });
   });
 
-  // ---------- هر پیام متنی دیگر که با هیچ‌کدام از دکمه‌ها مطابقت نداشت ----------
+  // ---------- هر پیام متنی دیگر ----------
   bot.on("message:text", async (ctx) => {
     await ctx.reply("برای شروع از منوی زیر استفاده کن 👇", {
       reply_markup: mainKeyboard(),
@@ -190,22 +188,15 @@ export default {
     const url = new URL(request.url);
     const bot = createBot(env);
 
-    // آدرسی که در تلگرام به عنوان webhook ثبت می‌کنیم
     if (url.pathname === "/webhook") {
       try {
         return await webhookCallback(bot, "cloudflare-mod")(request);
       } catch (err) {
-        // اگر اینجا خطایی رخ بدهد و 200 برنگردانیم، تلگرام همان آپدیت را
-        // بارها دوباره می‌فرستد (همان چیزی که باعث چند پیام تکراری می‌شود).
-        // پس خطا را لاگ می‌کنیم (قابل مشاهده با wrangler tail) ولی همیشه
-        // به تلگرام 200 برمی‌گردانیم.
         console.error("Unhandled webhook error:", err);
         return new Response("OK");
       }
     }
 
-    // یک شورتکات برای ثبت خودکار webhook بعد از دیپلوی
-    // یکبار در مرورگر باز کن: https://<your-worker>.workers.dev/register-webhook
     if (url.pathname === "/register-webhook") {
       const webhookUrl = `${url.origin}/webhook`;
       const res = await fetch(
