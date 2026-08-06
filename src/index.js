@@ -48,12 +48,23 @@ const SKILLS_LIST_TEXT = `‌🚀 *مهارت‌ها*
 
 const PROJECTS_TEXT = `🚀 پروژه‌ها
 
-اینجا معرفی پروژه‌های من قرار می‌گیرد...
+📌 [Image Resolution Enhancer](https://abbasaghebaty.github.io/Increase-photo-resolotion/)
+ابزار تحت وب برای افزایش کیفیت و رزولوشن تصاویر با رابط کاربری ساده و کاربردی.
 
-مثلاً:
-- سایت شخصی
-- ربات تلگرام
-- ابزارهای تحت وب`;
+📌 [Caption Generator](https://abbasaghebaty.github.io/Caption-Generator/)
+ابزار تولید و مدیریت کپشن برای شبکه‌های اجتماعی با قابلیت آماده‌سازی متن‌های حرفه‌ای برای انتشار محتوا.
+
+📌 [YourClean Bot](https://t.me/YourClean_bot)
+ربات تلگرامی فروشگاهی برای مدیریت ارتباط با کاربران، معرفی محصولات و ارائه خدمات آنلاین.
+
+📌 [Shoma Shop](http://shoma-shop.ir/)
+وب‌سایت فروشگاهی با طراحی اختصاصی برای معرفی محصولات، نمایش اطلاعات کالاها و ایجاد تجربه خرید آنلاین.
+
+📌 [Abbas Assistant Bot](https://t.me/abbas_aghebaty_bot)
+دستیار شخصی تلگرامی با قابلیت تعامل با کاربران، نمایش اطلاعات، ارائه خدمات و مدیریت درخواست‌ها.
+
+📌 [Personal Portfolio Website](https://abbasaghebaty.github.io/about-me/)
+وب‌سایت شخصی معرفی مهارت‌ها، پروژه‌ها و مسیر توسعه حرفه‌ای با طراحی مدرن و واکنش‌گرا.`;
 
 const BUY_TEXT = `🛒 خرید فیلترشکن ویتوری
 
