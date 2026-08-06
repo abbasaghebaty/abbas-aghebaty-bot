@@ -46,8 +46,10 @@ export default {
           }
         }
 
-        handleUpdate = webhookCallback(bot, "cloudflare-mod");
-      }
+        handleUpdate = webhookCallback(
+  bot,
+  "cloudflare"
+);
 
       if (request.method === "POST") {
         return await handleUpdate(request, env, ctx);
