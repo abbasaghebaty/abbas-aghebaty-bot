@@ -124,6 +124,12 @@ function skillsKeyboard() {
     .text(BTN_SKILLS_LIST, "skills_list");
 }
 
+
+function backToSkillsKeyboard() {
+  return new InlineKeyboard()
+    .text("🔙 بازگشت", "back_skills");
+}
+
 // ============================================================
 //  توابع کمکی دیتابیس
 // ============================================================
@@ -202,14 +208,27 @@ function createBot(env) {
  bot.callbackQuery("skills_list", async (ctx) => {
   await ctx.answerCallbackQuery();
 
-  await ctx.reply(SKILLS_LIST_TEXT);
+  await ctx.editMessageText(SKILLS_LIST_TEXT, {
+    reply_markup: backToSkillsKeyboard()
+  });
 });
 
 
 bot.callbackQuery("projects", async (ctx) => {
   await ctx.answerCallbackQuery();
 
-  await ctx.reply(PROJECTS_TEXT);
+  await ctx.editMessageText(PROJECTS_TEXT, {
+    reply_markup: backToSkillsKeyboard()
+  });
+});
+
+
+bot.callbackQuery("back_skills", async (ctx) => {
+  await ctx.answerCallbackQuery();
+
+  await ctx.editMessageText(SKILLS_TEXT, {
+    reply_markup: skillsKeyboard()
+  });
 });
 
 
