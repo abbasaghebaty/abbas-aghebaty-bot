@@ -228,6 +228,15 @@ function createBot(env) {
     const telegramId = ctx.from.id;
     const text = ctx.message.text;
 
+    // اگر به هر دلیلی متنِ یک دکمه‌ی منو به این‌جا رسیده باشد (مثلاً وضعیت
+    // قبلاً پاک نشده بوده)، به‌جای پردازش‌اش به‌عنوان پیام ناشناس، فقط
+    // وضعیت را پاک می‌کنیم تا کاربر گیر نکند؛ خودِ دکمه با bot.hears
+    // به‌طور طبیعی قبل از این هندلر پاسخ داده می‌شود.
+    if (NAV_BUTTONS.has(text)) {
+      await clearState(env.DB, telegramId);
+      return;
+    }
+
     // بخش ادمین: وقتی عباس روی یکی از پیام‌های relay‌شده Reply می‌زند
     if (telegramId === ADMIN_ID && ctx.message.reply_to_message) {
       const targetId = await getUserIdByAdminMessage(
@@ -245,19 +254,22 @@ function createBot(env) {
     const state = await getState(env.DB, telegramId);
 
     if (state?.state === "awaiting_message") {
-      const userRow = await env.DB
-        .prepare(`SELECT username, first_name FROM users WHERE telegram_id = ?`)
-        .bind(telegramId)
-        .first();
+      // هر اتفاقی که بیفتد (موفق یا ناموفق)، حتماً باید وضعیت پاک شود؛
+      // وگرنه کاربر برای همیشه توی حالت "در انتظار پیام" گیر می‌کند.
+      try {
+        const userRow = await env.DB
+          .prepare(`SELECT username, first_name FROM users WHERE telegram_id = ?`)
+          .bind(telegramId)
+          .first();
 
-      const fromName = userRow?.first_name ?? ctx.from.first_name ?? "کاربر ناشناس";
-      const usernameLabel = userRow?.username
-        ? "@" + userRow.username
-        : ctx.from.username
-        ? "@" + ctx.from.username
-        : "بدون یوزرنیم";
+        const fromName = userRow?.first_name ?? ctx.from.first_name ?? "کاربر ناشناس";
+        const usernameLabel = userRow?.username
+          ? "@" + userRow.username
+          : ctx.from.username
+          ? "@" + ctx.from.username
+          : "بدون یوزرنیم";
 
-      const infoText = `📩 پیام ناشناس جدید
+        const infoText = `📩 پیام ناشناس جدید
 
 از طرف: ${fromName} (${usernameLabel})
 🆔 ID: ${telegramId}
@@ -265,11 +277,23 @@ function createBot(env) {
 متن پیام:
 ${text}`;
 
-      const sentMsg = await ctx.api.sendMessage(ADMIN_ID, infoText);
-      await saveAdminMessageLink(env.DB, sentMsg.message_id, telegramId);
-      await clearState(env.DB, telegramId);
+        const sentMsg = await ctx.api.sendMessage(ADMIN_ID, infoText);
+        await saveAdminMessageLink(env.DB, sentMsg.message_id, telegramId);
 
-      await ctx.reply(SENT_TEXT, { reply_markup: mainKeyboard() });
+        await ctx.reply(SENT_TEXT, { reply_markup: mainKeyboard() });
+      } catch (err) {
+        // اگر ارسال برای ادمین fail شود (مثلاً ADMIN_ID اشتباه است یا
+        // عباس هنوز هیچ‌وقت /start را نزده) اینجا لاگ می‌شود — با
+        // `wrangler tail` قابل مشاهده است — و به‌جای کرش کردن ربات،
+        // به کاربر خبر داده می‌شود.
+        console.error("Failed to relay anonymous message to admin:", err);
+        await ctx.reply(
+          "متاسفانه در حال حاضر امکان ارسال پیام وجود نداره. لطفاً بعداً دوباره امتحان کن.",
+          { reply_markup: mainKeyboard() }
+        );
+      } finally {
+        await clearState(env.DB, telegramId);
+      }
       return;
     }
 
@@ -292,7 +316,16 @@ export default {
 
     // آدرسی که در تلگرام به عنوان webhook ثبت می‌کنیم
     if (url.pathname === "/webhook") {
-      return webhookCallback(bot, "cloudflare-mod")(request);
+      try {
+        return await webhookCallback(bot, "cloudflare-mod")(request);
+      } catch (err) {
+        // اگر اینجا خطایی رخ بدهد و 200 برنگردانیم، تلگرام همان آپدیت را
+        // بارها دوباره می‌فرستد (همان چیزی که باعث چند پیام تکراری می‌شود).
+        // پس خطا را لاگ می‌کنیم (قابل مشاهده با wrangler tail) ولی همیشه
+        // به تلگرام 200 برمی‌گردانیم.
+        console.error("Unhandled webhook error:", err);
+        return new Response("OK");
+      }
     }
 
     // یک شورتکات برای ثبت خودکار webhook بعد از دیپلوی
