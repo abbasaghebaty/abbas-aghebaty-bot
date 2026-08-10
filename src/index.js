@@ -94,6 +94,7 @@ const TELEGRAM_LINK = "https://t.me/abbas_aghebaty";
 // ⚠️ حتماً لینک‌های واقعی ربات و کانال کاوه را اینجا بگذار
 const Team_express = "https://t.me/Team_express_bot?start=ref_c970a39b";
 const super_net = "https://t.me/Supernetshop_bot?start=7548075013";
+const kaveh_vpn = "https://t.me/KavehNetVPNBot?start=ref7548075013";
 
 // ============================================================
 //  متن دکمه‌ها
@@ -135,6 +136,7 @@ function buyKeyboard() {
   return new InlineKeyboard()
     .url("🤖 تیم اکسپرس", Team_express)
     .url("🤖 ربات سوپرنت", super_net)
+    .url("🤖 ربات کاوه", kaveh_vpn)
 }
 
 function anonKeyboard() {
