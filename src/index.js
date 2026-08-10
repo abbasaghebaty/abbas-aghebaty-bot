@@ -92,7 +92,7 @@ const YOUTUBE_LINK = "https://www.youtube.com/@abbas.aghebaty";
 const TELEGRAM_LINK = "https://t.me/abbas_aghebaty";
 
 // ⚠️ حتماً لینک‌های واقعی ربات و کانال کاوه را اینجا بگذار
-const KAVEH_BOT_LINK = "https://t.me/KavehNetVPNBot?start=ref7548075013";
+const Team_express = "https://t.me/Team_express_bot?start=ref_c970a39b";
 
 // ============================================================
 //  متن دکمه‌ها
@@ -132,7 +132,7 @@ function socialsKeyboard() {
 
 function buyKeyboard() {
   return new InlineKeyboard()
-    .url("🤖 ربات کاوه", KAVEH_BOT_LINK)
+    .url("🤖 تیم اکسپرس", Team_express)
 }
 
 function anonKeyboard() {
