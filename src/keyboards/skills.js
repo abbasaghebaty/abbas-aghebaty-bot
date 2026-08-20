@@ -1,13 +1,32 @@
 import { InlineKeyboard } from "grammy";
 import { BUTTONS } from "../config/buttons.js";
+import { BUTTON_STYLES } from "../config/buttonStyles.js";
 
 export function skillsKeyboard() {
-  return new InlineKeyboard()
-    .text(BUTTONS.skills.list, "skills_list")
-    .text(BUTTONS.skills.projects, "projects");
+  return InlineKeyboard.from([
+    [
+      {
+        text: BUTTONS.skills.list,
+        callback_data: "skills_list",
+        ...BUTTON_STYLES.primary,
+      },
+      {
+        text: BUTTONS.skills.projects,
+        callback_data: "projects",
+        ...BUTTON_STYLES.primary,
+      },
+    ],
+  ]);
 }
 
 export function backToSkillsKeyboard() {
-  return new InlineKeyboard()
-    .text(BUTTONS.skills.back, "back_skills");
+  return InlineKeyboard.from([
+    [
+      {
+        text: BUTTONS.skills.back,
+        callback_data: "back_skills",
+        ...BUTTON_STYLES.danger,
+      },
+    ],
+  ]);
 }
