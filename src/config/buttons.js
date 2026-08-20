@@ -8,15 +8,15 @@ export const BUTTONS = {
   },
 
   socials: {
+    youtube: "🎬 یوتیوب",
     instagram: "📷 اینستاگرام",
     telegram: "📢 تلگرام",
-    youtube: "🎬 یوتیوب",
-    back: "↩️ بازگشت",
+    back: "🔙",
   },
 
   skills: {
     list: "🛠 مهارت‌ها",
     projects: "🚀 پروژه‌ها",
-    back: "↩️ بازگشت",
+    back: "🔙",
   },
 };
