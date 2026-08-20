@@ -26,9 +26,9 @@ export function mainKeyboard() {
     ],
     [
       {
-        text: BUTTONS.main.anonymous,
-        ...BUTTON_STYLES.primary,
-      },
+  text: BUTTONS.main.anonymous,
+  ...BUTTON_STYLES.danger,
+},
     ],
   ])
     .resized()
