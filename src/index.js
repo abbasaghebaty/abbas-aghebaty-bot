@@ -1,197 +1,63 @@
-/**
- * EndMark Telegram Bot - Cloudflare Worker
- *
- * مسیر:
- * src/index.js
- */
-
-import handleCommand from './handlers/commandHandler.js';
-import handleMessage from './handlers/messageHandler.js';
-
-async function processUpdate(update, env, db) {
-  if (!update || typeof update !== 'object') {
-    return;
-  }
-
-  /*
-   * Message
-   */
-  if (update.message) {
-    const message = update.message;
-
-    if (!message.chat || !message.from) {
-      return;
-    }
-
-    const text = message.text || '';
-
-    console.log(
-      `📨 Message from ${message.chat.id}:`,
-      text || '[non-text message]'
-    );
-
-    if (text.startsWith('/')) {
-      await handleCommand(message, env, db);
-    } else {
-      await handleMessage(message, env, db);
-    }
-
-    return;
-  }
-
-  /*
-   * Edited message
-   */
-  if (update.edited_message) {
-    console.log('ℹ️ Edited message ignored');
-    return;
-  }
-
-  /*
-   * Callback Query
-   *
-   * فعلاً ربات از Reply Keyboard استفاده می‌کند،
-   * اما این مسیر را باز نگه می‌داریم تا اگر بعداً
-   * Inline Keyboard اضافه شد، Update گم نشود.
-   */
-  if (update.callback_query) {
-    console.log(
-      'ℹ️ Callback query received:',
-      update.callback_query.data
-    );
-
-    return;
-  }
-
-  console.log(
-    'ℹ️ Unsupported update type:',
-    Object.keys(update)
-  );
-}
+import { webhookCallback } from "grammy";
+import { createBot } from "./bot/createBot.js";
 
 export default {
-  async fetch(request, env) {
-    try {
-      const url = new URL(request.url);
 
-      /*
-       * Webhook
-       */
-      if (url.pathname === '/webhook') {
-        if (request.method !== 'POST') {
-          return new Response(
-            'Method Not Allowed',
-            { status: 405 }
-          );
-        }
+  async fetch(request, env, ctx) {
 
-        let update;
+    const url = new URL(request.url);
 
-        try {
-          update = await request.json();
-        } catch (error) {
-          console.error(
-            '❌ Invalid webhook JSON:',
-            error.message
-          );
+    const bot = createBot(env);
 
-          return new Response('OK', {
-            status: 200,
-          });
-        }
+    // -----------------------------
+    // Telegram Webhook
+    // -----------------------------
 
-        if (!env.TELEGRAM_BOT_TOKEN) {
-          console.error(
-            '❌ TELEGRAM_BOT_TOKEN is missing'
-          );
+    if (url.pathname === "/webhook") {
 
-          return new Response('OK', {
-            status: 200,
-          });
-        }
+      try {
 
-        const db = env.DB || null;
+        return await webhookCallback(
+          bot,
+          "cloudflare-mod"
+        )(request);
 
-        try {
-          await processUpdate(
-            update,
-            env,
-            db
-          );
-        } catch (error) {
-          console.error(
-            '❌ Update processing error:',
-            error.message,
-            error.stack
-          );
-        }
+      } catch (error) {
 
-        /*
-         * تلگرام باید همیشه 200 دریافت کند.
-         */
-        return new Response('OK', {
-          status: 200,
-        });
+        console.error("Webhook error:", error);
+
+        return new Response("OK");
       }
+    }
 
-      /*
-       * Root
-       */
-      if (url.pathname === '/') {
-        return Response.json({
-          success: true,
-          service: 'telegram-bot-endmark',
-          status: 'online',
-          database: Boolean(env.DB),
-          bot_token_set:
-            Boolean(env.TELEGRAM_BOT_TOKEN),
-          timestamp:
-            new Date().toISOString(),
-        });
-      }
+    // -----------------------------
+    // Register Webhook
+    // -----------------------------
 
-      /*
-       * Health
-       */
-      if (url.pathname === '/health') {
-        return Response.json({
-          ok: true,
-          service: 'endmark-bot',
-          database: Boolean(env.DB),
-          timestamp:
-            new Date().toISOString(),
-        });
-      }
+    if (url.pathname === "/register-webhook") {
 
-      /*
-       * Not found
-       */
-      return Response.json(
-        {
-          success: false,
-          error: 'Route not found',
-        },
-        {
-          status: 404,
-        }
+      const webhookUrl = `${url.origin}/webhook`;
+
+      const response = await fetch(
+        `https://api.telegram.org/bot${env.BOT_TOKEN}/setWebhook?url=${encodeURIComponent(webhookUrl)}`
       );
 
-    } catch (error) {
-      console.error(
-        '❌ FATAL WORKER ERROR:',
-        error.message,
-        error.stack
-      );
-
-      return Response.json(
+      return new Response(
+        await response.text(),
         {
-          success: false,
-          error: 'Internal server error',
-        },
-        {
-          status: 500,
+          headers: {
+            "content-type": "application/json",
+          },
         }
       );
     }
+
+    // -----------------------------
+    // Health Check
+    // -----------------------------
+
+    return new Response(
+      "Abbas Assistant Bot is running."
+    );
   },
 };
