@@ -23,5 +23,6 @@ export const LINKS = {
     captionGenerator: "https://abbasaghebaty.github.io/Caption-Generator/",
     yourClean: "https://t.me/YourClean_bot",
     assistant: "https://t.me/abbas_aghebaty_bot",
+    academyAdminX: "https://t.me/academy_adminx_Bot",
   },
 };
