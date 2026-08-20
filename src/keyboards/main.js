@@ -1,37 +1,34 @@
-/**
- * EndMark Main Menu
- *
- * مسیر:
- * keyboards/mainMenu.js
- */
+import { Keyboard } from "grammy";
+import { BUTTONS } from "../config/buttons.js";
+import { BUTTON_STYLES } from "../config/buttonStyles.js";
 
-export const MAIN_MENU_BUTTONS = Object.freeze({
-  BUY_COURSE: '🛍 خرید دوره',
-  EARN_MONEY: '💰 کسب درآمد',
-  SUPPORT: '❓ راهنما و پشتیبانی',
-});
-
-export function getMainMenuKeyboard() {
-  return {
-    keyboard: [
-      [
-        {
-          text: MAIN_MENU_BUTTONS.EARN_MONEY,
-          style: 'success',
-        },
-        {
-          text: MAIN_MENU_BUTTONS.BUY_COURSE,
-          style: 'primary',
-        },
-      ],
-      [
-        {
-          text: MAIN_MENU_BUTTONS.SUPPORT,
-          style: 'danger',
-        },
-      ],
+export function mainKeyboard() {
+  return Keyboard.from([
+    [
+      {
+        text: BUTTONS.main.socials,
+        ...BUTTON_STYLES.primary,
+      },
+      {
+        text: BUTTONS.main.skills,
+        ...BUTTON_STYLES.primary,
+      },
     ],
-    resize_keyboard: true,
-    is_persistent: false,
-  };
+    [
+      {
+        text: BUTTONS.main.about,
+        ...BUTTON_STYLES.primary,
+      },
+      {
+        text: BUTTONS.main.buy,
+        ...BUTTON_STYLES.primary,
+      },
+    ],
+    [
+      {
+        text: BUTTONS.main.anonymous,
+        ...BUTTON_STYLES.danger,
+      },
+    ],
+  ]).resized();
 }
