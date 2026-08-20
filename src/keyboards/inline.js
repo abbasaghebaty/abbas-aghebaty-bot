@@ -8,17 +8,17 @@ export function buyKeyboard() {
       {
         text: "🤖 تیم اکسپرس",
         url: LINKS.vpn.teamExpress,
-        ...BUTTON_STYLES.primary,
+        ...BUTTON_STYLES.success,
       },
       {
         text: "🤖 ربات سوپرنت",
         url: LINKS.vpn.superNet,
-        ...BUTTON_STYLES.primary,
+        ...BUTTON_STYLES.success,
       },
       {
         text: "🤖 ربات کاوه",
         url: LINKS.vpn.kaveh,
-        ...BUTTON_STYLES.primary,
+        ...BUTTON_STYLES.success,
       },
     ],
   ]);
