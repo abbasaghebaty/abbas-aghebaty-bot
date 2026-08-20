@@ -7,33 +7,15 @@ import {
 } from "../texts/general.js";
 
 import {
-  mainKeyboard,
-} from "../keyboards/main.js";
-
-import {
   buyKeyboard,
   anonymousKeyboard,
 } from "../keyboards/inline.js";
 
-import {
-  SKILLS_TEXT,
-} from "../texts/skills.js";
+import { SKILLS_TEXT } from "../texts/skills.js";
 
-import {
-  skillsKeyboard,
-} from "../keyboards/skills.js";
+import { skillsKeyboard } from "../keyboards/skills.js";
 
 export function registerMainMenuHandlers(bot) {
-
-  bot.hears(BUTTONS.main.socials, async (ctx) => {
-    await ctx.reply(
-      "🌐 <b>شبکه‌های اجتماعی</b>\n\nیکی از شبکه‌ها رو انتخاب کن 👇",
-      {
-        parse_mode: "HTML",
-      }
-    );
-  });
-
   bot.hears(BUTTONS.main.skills, async (ctx) => {
     await ctx.reply(SKILLS_TEXT, {
       parse_mode: "HTML",
@@ -47,7 +29,7 @@ export function registerMainMenuHandlers(bot) {
     });
   });
 
-  bot.hears(/خرید فیلترشکن/i, async (ctx) => {
+  bot.hears(BUTTONS.main.buy, async (ctx) => {
     await ctx.reply(BUY_TEXT, {
       parse_mode: "HTML",
       reply_markup: buyKeyboard(),
@@ -60,4 +42,4 @@ export function registerMainMenuHandlers(bot) {
       reply_markup: anonymousKeyboard(),
     });
   });
-        }
+}
