@@ -32,5 +32,5 @@ export function mainKeyboard() {
     ],
   ])
     .resized()
-    .persistent();
+    
 }
