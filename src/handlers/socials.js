@@ -1,6 +1,7 @@
 import { BUTTONS } from "../config/buttons.js";
 
 import {
+  SOCIALS_INTRO_TEXT,
   INSTAGRAM_TEXT,
   TELEGRAM_TEXT,
   YOUTUBE_TEXT,
@@ -18,33 +19,23 @@ const SOCIAL_MESSAGE_OPTIONS = {
 };
 
 export function registerSocialHandlers(bot) {
-
   bot.hears(BUTTONS.main.socials, async (ctx) => {
-    await ctx.reply(
-      "🌐 <b>شبکه‌های اجتماعی</b>\n\nیکی از شبکه‌ها رو انتخاب کن 👇",
-      {
-        parse_mode: "HTML",
-        reply_markup: socialsKeyboard(),
-      }
-    );
+    await ctx.reply(SOCIALS_INTRO_TEXT, {
+      parse_mode: "HTML",
+      reply_markup: socialsKeyboard(),
+    });
   });
 
   bot.hears(BUTTONS.socials.instagram, async (ctx) => {
-    await ctx.reply(INSTAGRAM_TEXT, {
-      ...SOCIAL_MESSAGE_OPTIONS,
-    });
+    await ctx.reply(INSTAGRAM_TEXT, SOCIAL_MESSAGE_OPTIONS);
   });
 
   bot.hears(BUTTONS.socials.telegram, async (ctx) => {
-    await ctx.reply(TELEGRAM_TEXT, {
-      ...SOCIAL_MESSAGE_OPTIONS,
-    });
+    await ctx.reply(TELEGRAM_TEXT, SOCIAL_MESSAGE_OPTIONS);
   });
 
   bot.hears(BUTTONS.socials.youtube, async (ctx) => {
-    await ctx.reply(YOUTUBE_TEXT, {
-      ...SOCIAL_MESSAGE_OPTIONS,
-    });
+    await ctx.reply(YOUTUBE_TEXT, SOCIAL_MESSAGE_OPTIONS);
   });
 
   bot.hears(BUTTONS.socials.back, async (ctx) => {
@@ -53,4 +44,4 @@ export function registerSocialHandlers(bot) {
       reply_markup: mainKeyboard(),
     });
   });
-            }
+}
