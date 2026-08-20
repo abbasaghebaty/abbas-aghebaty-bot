@@ -1,37 +1,37 @@
-import { Keyboard } from "grammy";
+/**
+ * EndMark Main Menu
+ *
+ * مسیر:
+ * keyboards/mainMenu.js
+ */
 
-import { BUTTONS } from "../config/buttons.js";
-import { BUTTON_STYLES } from "../config/buttonStyles.js";
+export const MAIN_MENU_BUTTONS = Object.freeze({
+  BUY_COURSE: '🛍 خرید دوره',
+  EARN_MONEY: '💰 کسب درآمد',
+  SUPPORT: '❓ راهنما و پشتیبانی',
+});
 
-export function mainKeyboard() {
-  return Keyboard.from([
-    [
-      {
-        text: BUTTONS.main.socials,
-        style: BUTTON_STYLES.primary,
-      },
-      {
-        text: BUTTONS.main.skills,
-        style: BUTTON_STYLES.primary,
-      },
+export function getMainMenuKeyboard() {
+  return {
+    keyboard: [
+      [
+        {
+          text: MAIN_MENU_BUTTONS.EARN_MONEY,
+          style: 'success',
+        },
+        {
+          text: MAIN_MENU_BUTTONS.BUY_COURSE,
+          style: 'primary',
+        },
+      ],
+      [
+        {
+          text: MAIN_MENU_BUTTONS.SUPPORT,
+          style: 'danger',
+        },
+      ],
     ],
-
-    [
-      {
-        text: BUTTONS.main.about,
-        style: BUTTON_STYLES.primary,
-      },
-      {
-        text: BUTTONS.main.buy,
-        style: BUTTON_STYLES.primary,
-      },
-    ],
-
-    [
-      {
-        text: BUTTONS.main.anonymous,
-        style: BUTTON_STYLES.danger,
-      },
-    ],
-  ]).resized();
+    resize_keyboard: true,
+    is_persistent: false,
+  };
 }
