@@ -1,13 +1,30 @@
 import { Keyboard } from "grammy";
 import { BUTTONS } from "../config/buttons.js";
+import { BUTTON_STYLES } from "../config/buttonStyles.js";
 
 export function socialsKeyboard() {
-  return new Keyboard()
-    .text(BUTTONS.socials.instagram)
-    .text(BUTTONS.socials.telegram)
-    .row()
-    .text(BUTTONS.socials.youtube)
-    .row()
-    .text(BUTTONS.socials.back)
-    .resized();
+  return Keyboard.from([
+    [
+      {
+        text: BUTTONS.socials.youtube,
+        ...BUTTON_STYLES.primary,
+      },
+    ],
+    [
+      {
+        text: BUTTONS.socials.instagram,
+        ...BUTTON_STYLES.primary,
+      },
+      {
+        text: BUTTONS.socials.telegram,
+        ...BUTTON_STYLES.primary,
+      },
+    ],
+    [
+      {
+        text: BUTTONS.socials.back,
+        ...BUTTON_STYLES.danger,
+      },
+    ],
+  ]).resized();
 }
