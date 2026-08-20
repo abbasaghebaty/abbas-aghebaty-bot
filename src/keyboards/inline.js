@@ -1,15 +1,42 @@
 import { InlineKeyboard } from "grammy";
 import { LINKS } from "../config/links.js";
+import { BUTTON_STYLES } from "../config/buttonStyles.js";
 
 export function buyKeyboard() {
-  return new InlineKeyboard()
-    .url("🤖 تیم اکسپرس", LINKS.vpn.teamExpress)
-    .url("🤖 ربات سوپرنت", LINKS.vpn.superNet)
-    .url("🤖 ربات کاوه", LINKS.vpn.kaveh);
+  return InlineKeyboard.from([
+    [
+      {
+        text: "🤖 تیم اکسپرس",
+        url: LINKS.vpn.teamExpress,
+        ...BUTTON_STYLES.primary,
+      },
+      {
+        text: "🤖 ربات سوپرنت",
+        url: LINKS.vpn.superNet,
+        ...BUTTON_STYLES.primary,
+      },
+      {
+        text: "🤖 ربات کاوه",
+        url: LINKS.vpn.kaveh,
+        ...BUTTON_STYLES.primary,
+      },
+    ],
+  ]);
 }
 
 export function anonymousKeyboard() {
-  return new InlineKeyboard()
-    .url("💬 چت‌بات", LINKS.anonymous.chatbot)
-    .url("💬 بگو بات", LINKS.anonymous.bego);
+  return InlineKeyboard.from([
+    [
+      {
+        text: "💬 چت‌بات",
+        url: LINKS.anonymous.chatbot,
+        ...BUTTON_STYLES.primary,
+      },
+      {
+        text: "💬 بگو بات",
+        url: LINKS.anonymous.bego,
+        ...BUTTON_STYLES.primary,
+      },
+    ],
+  ]);
 }
