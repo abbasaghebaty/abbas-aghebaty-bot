@@ -19,10 +19,10 @@ export function mainKeyboard() {
         text: BUTTONS.main.about,
         ...BUTTON_STYLES.primary,
       },
-      {
-        text: BUTTONS.main.buy,
-        ...BUTTON_STYLES.success,
-      },
+{
+  text: BUTTONS.main.buy,
+  ...BUTTON_STYLES.primary,
+},
     ],
     [
       {
