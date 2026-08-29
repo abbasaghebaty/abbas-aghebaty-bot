@@ -1,23 +1,37 @@
 import { LINKS } from "../config/links.js";
 
-export const SOCIALS_INTRO_TEXT = `🌐 <b>شبکه‌های اجتماعی</b>
+export const SOCIALS_INTRO_TEXT = `
+<b>شبکه‌های اجتماعی</b>
 
-یکی از شبکه‌ها رو انتخاب کن 👇`;
+برای مشاهده هر شبکه، یکی از گزینه‌های زیر رو انتخاب کن.
+`;
 
-export const INSTAGRAM_TEXT = `📷 <b>اینستاگرام</b>
+export const INSTAGRAM_TEXT = `
+<b>اینستاگرام</b>
 
-تولید محتوا، پشت صحنه پروژه‌ها، طراحی‌ها و فعالیت‌های روزمره من در اینستاگرام.
+فعالیت‌ها، پروژه‌ها، طراحی‌ها و بخشی از محتوایی که منتشر می‌کنم.
 
-🔗 <a href="${LINKS.social.instagram}">مشاهده صفحه اینستاگرام</a>`;
+از دکمه زیر می‌تونی وارد صفحه اینستاگرام بشی.
+`;
 
-export const TELEGRAM_TEXT = `📢 <b>تلگرام</b>
+export const TELEGRAM_TEXT = `
+<b>تلگرام</b>
 
-کانال و ارتباط مستقیم من در تلگرام برای دنبال کردن پروژه‌ها، اطلاع‌رسانی‌ها و محتواهای جدید.
+کانال و راه ارتباطی من در تلگرام.
 
-🔗 <a href="${LINKS.social.telegram}">ورود به تلگرام</a>`;
+برای مشاهده کانال یا ارتباط، از دکمه زیر استفاده کن.
+`;
 
-export const YOUTUBE_TEXT = `🎬 <b>یوتیوب</b>
+export const YOUTUBE_TEXT = `
+<b>یوتیوب</b>
 
 ویدیوهای آموزشی، پروژه‌ها، تست‌ها و محتوای ویدیویی من در یوتیوب.
 
-🔗 <a href="${LINKS.social.youtube}">مشاهده کانال یوتیوب</a>`;
+برای مشاهده کانال، از دکمه زیر استفاده کن.
+`;
+
+export const SOCIAL_LINKS = {
+  instagram: LINKS.social.instagram,
+  telegram: LINKS.social.telegram,
+  youtube: LINKS.social.youtube,
+};
