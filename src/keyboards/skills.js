@@ -24,9 +24,9 @@ export function backToSkillsKeyboard() {
   return InlineKeyboard.from([
     [
       {
-        text: "بازگشت",
+        text: "🔙",
         callback_data: "back_skills",
-        style: BUTTON_STYLES.primary,
+        style: BUTTON_STYLES.danger,
       },
     ],
   ]);
