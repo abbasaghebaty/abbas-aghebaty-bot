@@ -24,13 +24,6 @@ export function socialsKeyboard() {
         style: BUTTON_STYLES.primary,
       },
     ],
-    [
-      {
-        text: "بازگشت به منوی اصلی",
-        callback_data: "back_main",
-        style: BUTTON_STYLES.primary,
-      },
-    ],
   ]);
 }
 
