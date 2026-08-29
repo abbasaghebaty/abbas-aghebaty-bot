@@ -24,7 +24,7 @@ export const BUY_TEXT = `
 برای خرید فیلترشکن ویتوری، یکی از سرویس‌های زیر را انتخاب کن.
 `;
 
-export const ANON_INTRO_TEXT = `
+export const CONTACT_INTRO_TEXT = `
 <b>راه‌های ارتباطی</b>
 
 برای ارتباط با من یا ارسال پیام، یکی از گزینه‌های زیر رو انتخاب کن.
