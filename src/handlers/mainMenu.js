@@ -3,7 +3,7 @@ import { BUTTONS } from "../config/buttons.js";
 import {
   ABOUT_TEXT,
   BUY_TEXT,
-  ANON_INTRO_TEXT,
+  CONTACT_INTRO_TEXT,
 } from "../texts/general.js";
 
 import {
@@ -43,7 +43,7 @@ export function registerMainMenuHandlers(bot) {
   });
 
   bot.hears(BUTTONS.main.anonymous, async (ctx) => {
-    await ctx.reply(ANON_INTRO_TEXT, {
+    await ctx.reply(CONTACT_INTRO_TEXT, {
       ...MESSAGE_OPTIONS,
       reply_markup: anonymousKeyboard(),
     });
