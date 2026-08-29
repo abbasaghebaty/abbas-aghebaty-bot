@@ -38,9 +38,9 @@ export function socialDetailKeyboard(url) {
     ],
     [
       {
-        text: "بازگشت",
+        text: "🔙",
         callback_data: "back_socials",
-        style: BUTTON_STYLES.primary,
+        style: BUTTON_STYLES.danger,
       },
     ],
   ]);
