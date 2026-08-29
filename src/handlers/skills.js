@@ -1,8 +1,9 @@
 import {
   SKILLS_TEXT,
   SKILLS_LIST_TEXT,
-  PROJECTS_TEXT,
 } from "../texts/skills.js";
+
+import { PROJECTS_TEXT } from "../texts/projects.js";
 
 import {
   skillsKeyboard,
@@ -31,9 +32,6 @@ export function registerSkillsHandlers(bot) {
 
     await ctx.editMessageText(PROJECTS_TEXT, {
       ...MESSAGE_OPTIONS,
-      link_preview_options: {
-        is_disabled: true,
-      },
       reply_markup: backToSkillsKeyboard(),
     });
   });
