@@ -21,7 +21,7 @@ export function mainKeyboard() {
       },
       {
         text: BUTTONS.main.buy,
-        style: BUTTON_STYLES.success,
+        style: BUTTON_STYLES.primary,
       },
     ],
     [
