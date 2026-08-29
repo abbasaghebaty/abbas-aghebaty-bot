@@ -6,11 +6,8 @@ import {
 
 import {
   skillsKeyboard,
-  projectsKeyboard,
   backToSkillsKeyboard,
 } from "../keyboards/skills.js";
-
-import { WELCOME_TEXT } from "../texts/general.js";
 
 export function registerSkillsHandlers(bot) {
   const MESSAGE_OPTIONS = {
@@ -34,7 +31,10 @@ export function registerSkillsHandlers(bot) {
 
     await ctx.editMessageText(PROJECTS_TEXT, {
       ...MESSAGE_OPTIONS,
-      reply_markup: projectsKeyboard(),
+      link_preview_options: {
+        is_disabled: true,
+      },
+      reply_markup: backToSkillsKeyboard(),
     });
   });
 
