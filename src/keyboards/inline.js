@@ -1,24 +1,48 @@
 import { InlineKeyboard } from "grammy";
+
 import { LINKS } from "../config/links.js";
 import { BUTTON_STYLES } from "../config/buttonStyles.js";
+
+export function aboutKeyboard() {
+  return InlineKeyboard.from([
+    [
+      {
+        text: "بازگشت به منوی اصلی",
+        callback_data: "back_main",
+        style: BUTTON_STYLES.primary,
+      },
+    ],
+  ]);
+}
 
 export function buyKeyboard() {
   return InlineKeyboard.from([
     [
       {
-        text: "🤖 تیم اکسپرس",
+        text: "تیم اکسپرس",
         url: LINKS.vpn.teamExpress,
         style: BUTTON_STYLES.success,
       },
+    ],
+    [
       {
-        text: "🤖 ربات سوپرنت",
+        text: "سوپرنت",
         url: LINKS.vpn.superNet,
         style: BUTTON_STYLES.success,
       },
+    ],
+    [
       {
-        text: "🤖 ربات کاوه",
+        text: "کاوه",
         url: LINKS.vpn.kaveh,
         style: BUTTON_STYLES.success,
+      },
+    ],
+    [
+      {
+        text: "بازگشت به منوی اصلی",
+        callback_data: "back_main",
+        style: BUTTON_STYLES.primary,
       },
     ],
   ]);
@@ -28,13 +52,22 @@ export function anonymousKeyboard() {
   return InlineKeyboard.from([
     [
       {
-        text: "💬 چت‌بات",
+        text: "چت‌بات",
         url: LINKS.anonymous.chatbot,
         style: BUTTON_STYLES.primary,
       },
+    ],
+    [
       {
-        text: "💬 بگو بات",
+        text: "بگو بات",
         url: LINKS.anonymous.bego,
+        style: BUTTON_STYLES.primary,
+      },
+    ],
+    [
+      {
+        text: "بازگشت به منوی اصلی",
+        callback_data: "back_main",
         style: BUTTON_STYLES.primary,
       },
     ],
