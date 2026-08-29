@@ -6,11 +6,11 @@ export function mainKeyboard() {
   return Keyboard.from([
     [
       {
-        text: BUTTONS.main.socials,
+        text: BUTTONS.main.skills,
         style: BUTTON_STYLES.primary,
       },
       {
-        text: BUTTONS.main.skills,
+        text: BUTTONS.main.socials,
         style: BUTTON_STYLES.primary,
       },
     ],
@@ -21,13 +21,13 @@ export function mainKeyboard() {
       },
       {
         text: BUTTONS.main.buy,
-        style: BUTTON_STYLES.primary,
+        style: BUTTON_STYLES.success,
       },
     ],
     [
       {
         text: BUTTONS.main.anonymous,
-        style: BUTTON_STYLES.danger,
+        style: BUTTON_STYLES.primary,
       },
     ],
   ]).resized();
