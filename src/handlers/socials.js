@@ -5,43 +5,68 @@ import {
   INSTAGRAM_TEXT,
   TELEGRAM_TEXT,
   YOUTUBE_TEXT,
+  SOCIAL_LINKS,
 } from "../texts/socials.js";
 
-import { mainKeyboard } from "../keyboards/main.js";
-import { socialsKeyboard } from "../keyboards/socials.js";
-import { BACK_TO_MENU_TEXT } from "../texts/general.js";
-
-const SOCIAL_MESSAGE_OPTIONS = {
-  parse_mode: "HTML",
-  link_preview_options: {
-    is_disabled: true,
-  },
-};
+import {
+  socialsKeyboard,
+  socialDetailKeyboard,
+} from "../keyboards/socials.js";
 
 export function registerSocialHandlers(bot) {
+  const MESSAGE_OPTIONS = {
+    parse_mode: "HTML",
+    link_preview_options: {
+      is_disabled: true,
+    },
+  };
+
   bot.hears(BUTTONS.main.socials, async (ctx) => {
     await ctx.reply(SOCIALS_INTRO_TEXT, {
-      parse_mode: "HTML",
+      ...MESSAGE_OPTIONS,
       reply_markup: socialsKeyboard(),
     });
   });
 
-  bot.hears(BUTTONS.socials.instagram, async (ctx) => {
-    await ctx.reply(INSTAGRAM_TEXT, SOCIAL_MESSAGE_OPTIONS);
+  bot.callbackQuery("social_instagram", async (ctx) => {
+    await ctx.answerCallbackQuery();
+
+    await ctx.editMessageText(INSTAGRAM_TEXT, {
+      ...MESSAGE_OPTIONS,
+      reply_markup: socialDetailKeyboard(
+        SOCIAL_LINKS.instagram
+      ),
+    });
   });
 
-  bot.hears(BUTTONS.socials.telegram, async (ctx) => {
-    await ctx.reply(TELEGRAM_TEXT, SOCIAL_MESSAGE_OPTIONS);
+  bot.callbackQuery("social_telegram", async (ctx) => {
+    await ctx.answerCallbackQuery();
+
+    await ctx.editMessageText(TELEGRAM_TEXT, {
+      ...MESSAGE_OPTIONS,
+      reply_markup: socialDetailKeyboard(
+        SOCIAL_LINKS.telegram
+      ),
+    });
   });
 
-  bot.hears(BUTTONS.socials.youtube, async (ctx) => {
-    await ctx.reply(YOUTUBE_TEXT, SOCIAL_MESSAGE_OPTIONS);
+  bot.callbackQuery("social_youtube", async (ctx) => {
+    await ctx.answerCallbackQuery();
+
+    await ctx.editMessageText(YOUTUBE_TEXT, {
+      ...MESSAGE_OPTIONS,
+      reply_markup: socialDetailKeyboard(
+        SOCIAL_LINKS.youtube
+      ),
+    });
   });
 
-  bot.hears(BUTTONS.socials.back, async (ctx) => {
-    await ctx.reply(BACK_TO_MENU_TEXT, {
-      parse_mode: "HTML",
-      reply_markup: mainKeyboard(),
+  bot.callbackQuery("back_socials", async (ctx) => {
+    await ctx.answerCallbackQuery();
+
+    await ctx.editMessageText(SOCIALS_INTRO_TEXT, {
+      ...MESSAGE_OPTIONS,
+      reply_markup: socialsKeyboard(),
     });
   });
 }
