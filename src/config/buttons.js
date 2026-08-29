@@ -4,20 +4,20 @@ export const BUTTONS = {
     skills: "مهارت‌ها و پروژه‌ها",
     about: "درباره من",
     buy: "خرید ویتوری",
-    anonymous: "پیام ناشناس",
+    anonymous: "راه‌های ارتباطی",
   },
 
   socials: {
     youtube: "یوتیوب",
     instagram: "اینستاگرام",
     telegram: "تلگرام",
-    back: "بازگشت",
+    back: "🔙",
   },
 
   skills: {
     list: "مهارت‌ها",
     projects: "پروژه‌ها",
-    back: "بازگشت",
-    mainMenu: "منوی اصلی",
+    back: "🔙",
+    mainMenu: "🔙",
   },
 };
