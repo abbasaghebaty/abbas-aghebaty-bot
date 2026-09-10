@@ -17,7 +17,7 @@ export const LINKS = {
   },
 
   projects: {
-    portfolio: "https://abbasaghebaty.github.io/about-me/",
+    portfolio: "https://aghebaty.ir/",
     shomaShop: "http://shoma-shop.ir/",
     resolution: "https://abbasaghebaty.github.io/Increase-photo-resolotion/",
     captionGenerator: "https://abbasaghebaty.github.io/Caption-Generator/",
