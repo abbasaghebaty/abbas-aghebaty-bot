@@ -15,16 +15,14 @@ const BROADCAST_TEXT = `<b>اطلاعیه تغییر آیدی ربات</b>
 
 <b>عباس عاقبتی</b>`;
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
 function isAdmin(ctx) {
   return ctx.from?.id === ADMIN_ID;
 }
 
 export function registerBroadcastHandlers(bot, env) {
-  // Step 1: admin types /broadcast -> preview with confirm/cancel buttons
+  // Step 1: /broadcast -> preview with confirm/cancel buttons
   bot.command("broadcast", async (ctx) => {
-    if (!isAdmin(ctx)) return; // silently ignore everyone else
+    if (!isAdmin(ctx)) return;
 
     const row = await env.DB.prepare("SELECT COUNT(*) AS n FROM users").first();
 
@@ -47,42 +45,56 @@ export function registerBroadcastHandlers(bot, env) {
   bot.callbackQuery("bc_cancel", async (ctx) => {
     if (!isAdmin(ctx)) return ctx.answerCallbackQuery();
     await ctx.answerCallbackQuery();
-    await ctx.editMessageText("ارسال لغو شد.");
+    await ctx.editMessageText("ارسال لغو شد.").catch(() => {});
   });
 
-  // Step 2: confirm -> send to everyone
+  // Step 2: confirm -> send to everyone (in parallel batches, finishes in ~1-2 seconds)
   bot.callbackQuery("bc_confirm", async (ctx) => {
     if (!isAdmin(ctx)) return ctx.answerCallbackQuery();
-    await ctx.answerCallbackQuery();
 
-    // Remove the buttons first so a double-tap can't trigger a second broadcast
-    await ctx.editMessageText("در حال ارسال...");
+    try {
+      await ctx.answerCallbackQuery({ text: "در حال ارسال..." });
 
-    const { results } = await env.DB.prepare(
-      "SELECT telegram_id FROM users"
-    ).all();
+      // Remove the buttons so a double-tap can't trigger a second broadcast
+      await ctx.editMessageText("در حال ارسال...").catch(() => {});
 
-    let sent = 0;
-    let failed = 0;
+      const { results } = await env.DB.prepare(
+        "SELECT telegram_id FROM users"
+      ).all();
 
-    for (const { telegram_id } of results) {
-      try {
-        await ctx.api.sendMessage(telegram_id, BROADCAST_TEXT, {
-          parse_mode: "HTML",
-          link_preview_options: { is_disabled: true },
-        });
-        sent++;
-      } catch (error) {
-        // 403 = user blocked the bot, 400 = chat not found, etc.
-        failed++;
-        console.error("Broadcast failed for", telegram_id, error?.description ?? error);
+      let sent = 0;
+      let failed = 0;
+      const BATCH = 10; // far below Telegram's ~30 msg/sec limit
+
+      for (let i = 0; i < results.length; i += BATCH) {
+        const batch = results.slice(i, i + BATCH);
+        const outcomes = await Promise.allSettled(
+          batch.map((u) =>
+            ctx.api.sendMessage(u.telegram_id, BROADCAST_TEXT, {
+              parse_mode: "HTML",
+              link_preview_options: { is_disabled: true },
+            })
+          )
+        );
+        for (const o of outcomes) {
+          if (o.status === "fulfilled") sent++;
+          else {
+            failed++;
+            console.error("Broadcast failed:", o.reason?.description ?? o.reason);
+          }
+        }
       }
-      await sleep(100); // stay far below Telegram's ~30 msg/sec limit
-    }
 
-    await ctx.api.sendMessage(
-      ADMIN_ID,
-      `ارسال تمام شد.\n✅ موفق: ${sent}\n❌ ناموفق: ${failed}`
-    );
+      await ctx.api.sendMessage(
+        ADMIN_ID,
+        `ارسال تمام شد.\n✅ موفق: ${sent}\n❌ ناموفق: ${failed}`
+      );
+    } catch (error) {
+      console.error("Broadcast error:", error);
+      // Tell the admin exactly what broke, instead of failing silently
+      await ctx.api
+        .sendMessage(ADMIN_ID, `خطا در ارسال:\n${String(error?.description ?? error?.message ?? error)}`)
+        .catch(() => {});
+    }
   });
 }
