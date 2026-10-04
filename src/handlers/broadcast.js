@@ -1,5 +1,5 @@
 // src/handlers/broadcast.js
-// Admin-only broadcast: /broadcast -> preview + confirm button -> send to all users in D1.
+// Admin-only: sending /broadcast immediately sends the fixed message below to every user in D1.
 
 const ADMIN_ID = 7548075013;
 
@@ -15,48 +15,12 @@ const BROADCAST_TEXT = `<b>اطلاعیه تغییر آیدی ربات</b>
 
 <b>عباس عاقبتی</b>`;
 
-function isAdmin(ctx) {
-  return ctx.from?.id === ADMIN_ID;
-}
-
 export function registerBroadcastHandlers(bot, env) {
-  // Step 1: /broadcast -> preview with confirm/cancel buttons
   bot.command("broadcast", async (ctx) => {
-    if (!isAdmin(ctx)) return;
-
-    const row = await env.DB.prepare("SELECT COUNT(*) AS n FROM users").first();
-
-    await ctx.reply(
-      `پیش‌نمایش پیام همگانی (${row.n} کاربر):\n\n${BROADCAST_TEXT}`,
-      {
-        parse_mode: "HTML",
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: "✅ تأیید ارسال", callback_data: "bc_confirm" },
-              { text: "❌ لغو", callback_data: "bc_cancel" },
-            ],
-          ],
-        },
-      }
-    );
-  });
-
-  bot.callbackQuery("bc_cancel", async (ctx) => {
-    if (!isAdmin(ctx)) return ctx.answerCallbackQuery();
-    await ctx.answerCallbackQuery();
-    await ctx.editMessageText("ارسال لغو شد.").catch(() => {});
-  });
-
-  // Step 2: confirm -> send to everyone (in parallel batches, finishes in ~1-2 seconds)
-  bot.callbackQuery("bc_confirm", async (ctx) => {
-    if (!isAdmin(ctx)) return ctx.answerCallbackQuery();
+    if (ctx.from?.id !== ADMIN_ID) return; // ignore everyone else
 
     try {
-      await ctx.answerCallbackQuery({ text: "در حال ارسال..." });
-
-      // Remove the buttons so a double-tap can't trigger a second broadcast
-      await ctx.editMessageText("در حال ارسال...").catch(() => {});
+      await ctx.reply("در حال ارسال...");
 
       const { results } = await env.DB.prepare(
         "SELECT telegram_id FROM users"
@@ -85,15 +49,11 @@ export function registerBroadcastHandlers(bot, env) {
         }
       }
 
-      await ctx.api.sendMessage(
-        ADMIN_ID,
-        `ارسال تمام شد.\n✅ موفق: ${sent}\n❌ ناموفق: ${failed}`
-      );
+      await ctx.reply(`ارسال تمام شد.\n✅ موفق: ${sent}\n❌ ناموفق: ${failed}`);
     } catch (error) {
       console.error("Broadcast error:", error);
-      // Tell the admin exactly what broke, instead of failing silently
-      await ctx.api
-        .sendMessage(ADMIN_ID, `خطا در ارسال:\n${String(error?.description ?? error?.message ?? error)}`)
+      await ctx
+        .reply(`خطا در ارسال:\n${String(error?.description ?? error?.message ?? error)}`)
         .catch(() => {});
     }
   });
