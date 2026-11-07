@@ -81,7 +81,7 @@ async function startSupport(ctx, env) {
   }
 
   await env.DB.prepare(
-    "INSERT INTO support_user_states (user_id, active, created_at) VALUES (?, 1, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET active = 1, created_at = datetime('now')"
+    "INSERT INTO support_user_states (user_id, active, message_count, created_at) VALUES (?, 1, 0, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET active = 1, message_count = 0, created_at = datetime('now')"
   ).bind(ctx.from.id).run();
 
   const keyboard = Keyboard.from([[{ text: CANCEL_TEXT, style: "danger" }]])
@@ -155,6 +155,10 @@ async function forwardUserMessage(ctx, env) {
       ctx.chat.id,
       ctx.message.message_id
     );
+
+    await env.DB.prepare(
+      "UPDATE support_user_states SET message_count = message_count + 1 WHERE user_id = ? AND active = 1"
+    ).bind(ctx.from.id).run();
 
 
   } catch (error) {
@@ -289,14 +293,10 @@ export function registerSupportHandlers(bot, env) {
     ).bind(ctx.from.id).first();
     if (!state?.active) return next();
 
-    const sent = await env.DB.prepare(
-      "SELECT COUNT(*) AS total FROM support_message_map WHERE user_id = ? AND chat_id = ? AND created_at >= ?"
-    ).bind(ctx.from.id, ctx.from.id, state?.created_at || "9999-12-31 23:59:59").first();
-
     await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
       .bind(ctx.from.id).run();
 
-    const total = Number(sent?.total || 0);
+    const total = Number(state?.message_count || 0);
     const summary = total > 0
       ? `${total} پیام شما برای مدیر ارسال شد.`
       : "ارسال پیام لغو شد؛ پیامی برای مدیر ارسال نشد.";
