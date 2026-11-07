@@ -83,7 +83,9 @@ async function startSupport(ctx, env) {
     "INSERT INTO support_user_states (user_id, active) VALUES (?, 1) ON CONFLICT(user_id) DO UPDATE SET active = 1"
   ).bind(ctx.from.id).run();
 
-  const keyboard = new Keyboard().text(CANCEL_TEXT).resized().persistent();
+  const keyboard = Keyboard.from([[{ text: CANCEL_TEXT, style: "danger" }]])
+    .resized()
+    .persistent();
   await ctx.reply(SUPPORT_PROMPT, { reply_markup: keyboard });
 }
 
