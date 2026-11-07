@@ -6,12 +6,6 @@ export const WELCOME_TEXT = `
 از منوی زیر چیزی که می‌خوای رو انتخاب کن.
 `;
 
-export const CONTACT_INTRO_TEXT = `
-<b>راه‌های ارتباطی</b>
-
-برای ارتباط با من یا ارسال پیام، یکی از گزینه‌های زیر رو انتخاب کن.
-`;
-
 export const BACK_TO_MENU_TEXT = `
 <b>منوی اصلی</b>
 
