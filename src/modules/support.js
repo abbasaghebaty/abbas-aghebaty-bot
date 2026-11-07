@@ -3,7 +3,7 @@ import { mainKeyboard } from "../keyboards/main.js";
 import { createReactionKeyboard, registerReactionHandlers } from "./reactions.js";
 
 const CANCEL_TEXT = "لغو";
-const SUPPORT_PROMPT = "پیامت رو بفرست.\\nبرای خروج، دکمه «لغو» رو بزن.";
+const SUPPORT_PROMPT = "پیامت رو بفرست.\nبرای خروج، دکمه «لغو» رو بزن.";
 const SUPPORT_CANCELLED = "ارسال پیام لغو شد و به مدیر چیزی ارسال نشد.";
 const SUPPORT_BLOCKED = "امکان ارسال پیام به مدیر برای حساب شما فعال نیست.";
 
@@ -114,14 +114,14 @@ async function forwardUserMessage(ctx, env) {
     let copied;
     let adminMessageId;
     if (typeof ctx.message.text === "string") {
-      copied = await ctx.api.sendMessage(managerId, profile + "\\n" + escapeHtml(ctx.message.text), {
+      copied = await ctx.api.sendMessage(managerId, profile + "\n" + escapeHtml(ctx.message.text), {
         parse_mode: "HTML",
         link_preview_options: { is_disabled: true },
         reply_markup: createReactionKeyboard(),
       });
       adminMessageId = copied.message_id;
     } else {
-      const caption = profile + (ctx.message.caption ? "\\n" + escapeHtml(ctx.message.caption) : "");
+      const caption = profile + (ctx.message.caption ? "\n" + escapeHtml(ctx.message.caption) : "");
       try {
         copied = await ctx.api.copyMessage(managerId, ctx.chat.id, ctx.message.message_id, {
           caption,
