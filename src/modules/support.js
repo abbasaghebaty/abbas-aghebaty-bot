@@ -1,5 +1,6 @@
 import { InlineKeyboard, Keyboard } from "grammy";
 import { mainKeyboard } from "../keyboards/main.js";
+import { sendReactionPanel, registerReactionHandlers } from "./reactions.js";
 
 const CANCEL_TEXT = "لغو";
 const SUPPORT_PROMPT = "پیامت رو بفرست. می‌تونی متن، عکس، ویدیو، فایل یا هر محتوای پشتیبانی‌شده‌ای ارسال کنی.\nبرای خروج، دکمه «لغو» رو بزن یا /cancel رو بفرست.";
@@ -121,12 +122,35 @@ async function forwardUserMessage(ctx, env) {
 
   try {
     const copied = await ctx.api.copyMessage(managerId, ctx.chat.id, ctx.message.message_id);
-    await env.DB.prepare(
-      "INSERT OR REPLACE INTO support_message_map (chat_id, message_id, peer_chat_id, peer_message_id, user_id) VALUES (?, ?, ?, ?, ?)"
-    ).bind(managerId, copied.message_id, ctx.chat.id, ctx.message.message_id, ctx.from.id).run();
-    await env.DB.prepare(
-      "INSERT OR REPLACE INTO support_message_map (chat_id, message_id, peer_chat_id, peer_message_id, user_id) VALUES (?, ?, ?, ?, ?)"
-    ).bind(ctx.chat.id, ctx.message.message_id, managerId, copied.message_id, ctx.from.id).run();
+    await saveMessagePair(
+      env.DB,
+      ctx.from.id,
+      managerId,
+      copied.message_id,
+      ctx.chat.id,
+      ctx.message.message_id
+    );
+
+    const panels = await Promise.allSettled([
+      sendReactionPanel(ctx.api, env.DB, {
+        chatId: managerId,
+        targetMessageId: copied.message_id,
+        peerChatId: ctx.chat.id,
+        peerMessageId: ctx.message.message_id,
+        userId: ctx.from.id,
+      }),
+      sendReactionPanel(ctx.api, env.DB, {
+        chatId: ctx.chat.id,
+        targetMessageId: ctx.message.message_id,
+        peerChatId: managerId,
+        peerMessageId: copied.message_id,
+        userId: ctx.from.id,
+      }),
+    ]);
+    for (const panel of panels) {
+      if (panel.status === "rejected") console.error("Reaction panel failed:", panel.reason);
+    }
+
     await ctx.reply("پیامت برای مدیر ارسال شد. برای پایان ارتباط، «لغو» رو بزن.");
   } catch (error) {
     console.error("Support forward failed:", error);
@@ -149,6 +173,27 @@ async function forwardAdminReply(ctx, env, mapped) {
       mapped.user_id,
       copied.message_id
     );
+
+    const panels = await Promise.allSettled([
+      sendReactionPanel(ctx.api, env.DB, {
+        chatId: ctx.chat.id,
+        targetMessageId: ctx.message.message_id,
+        peerChatId: mapped.user_id,
+        peerMessageId: copied.message_id,
+        userId: mapped.user_id,
+      }),
+      sendReactionPanel(ctx.api, env.DB, {
+        chatId: mapped.user_id,
+        targetMessageId: copied.message_id,
+        peerChatId: ctx.chat.id,
+        peerMessageId: ctx.message.message_id,
+        userId: mapped.user_id,
+      }),
+    ]);
+    for (const panel of panels) {
+      if (panel.status === "rejected") console.error("Reaction panel failed:", panel.reason);
+    }
+
     await ctx.reply("پاسخت برای کاربر ارسال شد.");
   } catch (error) {
     console.error("Support reply failed:", error);
@@ -223,6 +268,8 @@ async function showBlocked(ctx, env) {
 }
 
 export function registerSupportHandlers(bot, env) {
+  registerReactionHandlers(bot, env);
+
   bot.callbackQuery("support:start", async (ctx) => {
     await ctx.answerCallbackQuery();
     await startSupport(ctx, env);
