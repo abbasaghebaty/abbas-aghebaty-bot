@@ -83,7 +83,7 @@ async function startSupport(ctx, env) {
     "INSERT INTO support_user_states (user_id, active) VALUES (?, 1) ON CONFLICT(user_id) DO UPDATE SET active = 1"
   ).bind(ctx.from.id).run();
 
-  const keyboard = new InlineKeyboard().text(CANCEL_TEXT, "support:cancel", { style: "danger" });
+  const keyboard = { inline_keyboard: [[{ text: CANCEL_TEXT, callback_data: "support:cancel", style: "danger" }]] };
   await ctx.reply(SUPPORT_PROMPT, { reply_markup: keyboard });
 }
 
@@ -112,12 +112,14 @@ async function forwardUserMessage(ctx, env) {
 
   try {
     let copied;
+    let adminMessageId;
     if (typeof ctx.message.text === "string") {
       copied = await ctx.api.sendMessage(managerId, profile + "\\n" + escapeHtml(ctx.message.text), {
         parse_mode: "HTML",
         link_preview_options: { is_disabled: true },
         reply_markup: createReactionKeyboard(),
       });
+      adminMessageId = copied.message_id;
     } else {
       const caption = profile + (ctx.message.caption ? "\\n" + escapeHtml(ctx.message.caption) : "");
       try {
@@ -126,6 +128,7 @@ async function forwardUserMessage(ctx, env) {
           parse_mode: "HTML",
           reply_markup: createReactionKeyboard(),
         });
+        adminMessageId = copied.message_id;
       } catch (copyError) {
         // Some message types (such as stickers) do not support captions.
         // Keep them deliverable; attach the reaction controls to the sender header.
@@ -134,6 +137,7 @@ async function forwardUserMessage(ctx, env) {
           parse_mode: "HTML",
           reply_markup: createReactionKeyboard(),
         });
+        adminMessageId = header.message_id;
         copied = await ctx.api.copyMessage(managerId, ctx.chat.id, ctx.message.message_id, {
           reply_parameters: { message_id: header.message_id, allow_sending_without_reply: true },
         });
@@ -144,7 +148,7 @@ async function forwardUserMessage(ctx, env) {
       env.DB,
       ctx.from.id,
       managerId,
-      copied.message_id,
+      adminMessageId || copied.message_id,
       ctx.chat.id,
       ctx.message.message_id
     );
