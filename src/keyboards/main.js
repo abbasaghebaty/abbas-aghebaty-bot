@@ -16,16 +16,6 @@ export function mainKeyboard() {
     ],
     [
       {
-        text: BUTTONS.main.about,
-        style: BUTTON_STYLES.primary,
-      },
-      {
-        text: BUTTONS.main.buy,
-        style: BUTTON_STYLES.primary,
-      },
-    ],
-    [
-      {
         text: BUTTONS.main.anonymous,
         style: BUTTON_STYLES.danger,
       },
