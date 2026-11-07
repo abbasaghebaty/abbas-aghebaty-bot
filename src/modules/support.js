@@ -1,9 +1,9 @@
-import { InlineKeyboard, Keyboard } from "grammy";
+import { InlineKeyboard } from "grammy";
 import { mainKeyboard } from "../keyboards/main.js";
-import { sendReactionPanel, registerReactionHandlers } from "./reactions.js";
+import { createReactionKeyboard, registerReactionHandlers } from "./reactions.js";
 
 const CANCEL_TEXT = "لغو";
-const SUPPORT_PROMPT = "پیامت رو بفرست. می‌تونی متن، عکس، ویدیو، فایل یا هر محتوای پشتیبانی‌شده‌ای ارسال کنی.\nبرای خروج، دکمه «لغو» رو بزن یا /cancel رو بفرست.";
+const SUPPORT_PROMPT = "پیامت رو بفرست.\\nبرای خروج، دکمه «لغو» رو بزن.";
 const SUPPORT_CANCELLED = "ارسال پیام لغو شد و به مدیر چیزی ارسال نشد.";
 const SUPPORT_BLOCKED = "امکان ارسال پیام به مدیر برای حساب شما فعال نیست.";
 
@@ -83,14 +83,8 @@ async function startSupport(ctx, env) {
     "INSERT INTO support_user_states (user_id, active) VALUES (?, 1) ON CONFLICT(user_id) DO UPDATE SET active = 1"
   ).bind(ctx.from.id).run();
 
-  const keyboard = new Keyboard().text(CANCEL_TEXT).resized().persistent();
+  const keyboard = new InlineKeyboard().text(CANCEL_TEXT, "support:cancel", { style: "danger" });
   await ctx.reply(SUPPORT_PROMPT, { reply_markup: keyboard });
-}
-
-async function cancelSupport(ctx, env) {
-  await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
-    .bind(ctx.from.id).run();
-  await ctx.reply(SUPPORT_CANCELLED, { reply_markup: mainKeyboard() });
 }
 
 async function forwardUserMessage(ctx, env) {
@@ -115,13 +109,37 @@ async function forwardUserMessage(ctx, env) {
 
   const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ") || "کاربر";
   const profile = '<a href="tg://user?id=' + ctx.from.id + '">' + escapeHtml(name) + "</a>";
-  await ctx.api.sendMessage(managerId, profile + "\n\n", {
-    parse_mode: "HTML",
-    link_preview_options: { is_disabled: true },
-  });
 
   try {
-    const copied = await ctx.api.copyMessage(managerId, ctx.chat.id, ctx.message.message_id);
+    let copied;
+    if (typeof ctx.message.text === "string") {
+      copied = await ctx.api.sendMessage(managerId, profile + "\\n" + escapeHtml(ctx.message.text), {
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: true },
+        reply_markup: createReactionKeyboard(),
+      });
+    } else {
+      const caption = profile + (ctx.message.caption ? "\\n" + escapeHtml(ctx.message.caption) : "");
+      try {
+        copied = await ctx.api.copyMessage(managerId, ctx.chat.id, ctx.message.message_id, {
+          caption,
+          parse_mode: "HTML",
+          reply_markup: createReactionKeyboard(),
+        });
+      } catch (copyError) {
+        // Some message types (such as stickers) do not support captions.
+        // Keep them deliverable; attach the reaction controls to the sender header.
+        console.warn("Copy with combined caption failed; using separate header:", copyError);
+        const header = await ctx.api.sendMessage(managerId, profile, {
+          parse_mode: "HTML",
+          reply_markup: createReactionKeyboard(),
+        });
+        copied = await ctx.api.copyMessage(managerId, ctx.chat.id, ctx.message.message_id, {
+          reply_parameters: { message_id: header.message_id, allow_sending_without_reply: true },
+        });
+      }
+    }
+
     await saveMessagePair(
       env.DB,
       ctx.from.id,
@@ -130,26 +148,6 @@ async function forwardUserMessage(ctx, env) {
       ctx.chat.id,
       ctx.message.message_id
     );
-
-    const panels = await Promise.allSettled([
-      sendReactionPanel(ctx.api, env.DB, {
-        chatId: managerId,
-        targetMessageId: copied.message_id,
-        peerChatId: ctx.chat.id,
-        peerMessageId: ctx.message.message_id,
-        userId: ctx.from.id,
-      }),
-      sendReactionPanel(ctx.api, env.DB, {
-        chatId: ctx.chat.id,
-        targetMessageId: ctx.message.message_id,
-        peerChatId: managerId,
-        peerMessageId: copied.message_id,
-        userId: ctx.from.id,
-      }),
-    ]);
-    for (const panel of panels) {
-      if (panel.status === "rejected") console.error("Reaction panel failed:", panel.reason);
-    }
 
     await ctx.reply("پیامت برای مدیر ارسال شد. برای پایان ارتباط، «لغو» رو بزن.");
   } catch (error) {
@@ -173,26 +171,6 @@ async function forwardAdminReply(ctx, env, mapped) {
       mapped.user_id,
       copied.message_id
     );
-
-    const panels = await Promise.allSettled([
-      sendReactionPanel(ctx.api, env.DB, {
-        chatId: ctx.chat.id,
-        targetMessageId: ctx.message.message_id,
-        peerChatId: mapped.user_id,
-        peerMessageId: copied.message_id,
-        userId: mapped.user_id,
-      }),
-      sendReactionPanel(ctx.api, env.DB, {
-        chatId: mapped.user_id,
-        targetMessageId: copied.message_id,
-        peerChatId: ctx.chat.id,
-        peerMessageId: ctx.message.message_id,
-        userId: mapped.user_id,
-      }),
-    ]);
-    for (const panel of panels) {
-      if (panel.status === "rejected") console.error("Reaction panel failed:", panel.reason);
-    }
 
     await ctx.reply("پاسخت برای کاربر ارسال شد.");
   } catch (error) {
@@ -287,18 +265,16 @@ export function registerSupportHandlers(bot, env) {
     await ctx.editMessageText("کاربر " + userId + " از فهرست بلاک خارج شد.");
   });
 
-  bot.command("cancel", async (ctx) => {
-    if (isAdmin(ctx, env)) return;
-    await cancelSupport(ctx, env);
-  });
-
-  bot.hears(CANCEL_TEXT, async (ctx, next) => {
-    if (isAdmin(ctx, env)) return;
-    const state = await env.DB.prepare(
-      "SELECT active FROM support_user_states WHERE user_id = ?"
-    ).bind(ctx.from.id).first();
-    if (!state?.active) return next();
-    await cancelSupport(ctx, env);
+  bot.callbackQuery("support:cancel", async (ctx) => {
+    if (isAdmin(ctx, env)) {
+      await ctx.answerCallbackQuery({ text: "این دکمه برای کاربران است." });
+      return;
+    }
+    await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
+      .bind(ctx.from.id).run();
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(SUPPORT_CANCELLED);
+    await ctx.reply("به منوی اصلی برگشتی.", { reply_markup: mainKeyboard() });
   });
 
   bot.command("block", (ctx) => blockUser(ctx, env));
