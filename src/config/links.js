@@ -10,12 +10,6 @@ export const LINKS = {
     telegram: "https://t.me/abbas_aghebaty",
   },
 
-  vpn: {
-    teamExpress: "https://t.me/Team_express_bot?start=ref_c970a39b",
-    superNet: "https://t.me/Supernetshop_bot?start=7548075013",
-    kaveh: "https://t.me/KavehNetVPNBot?start=ref7548075013",
-  },
-
   projects: {
     portfolio: "https://aghebaty.ir/",
     shomaShop: "http://shoma-shop.ir/",
