@@ -1,5 +1,27 @@
 import { InlineKeyboard } from "grammy";
+import { LINKS } from "../config/links.js";
+import { BUTTON_STYLES } from "../config/buttonStyles.js";
 
 export function anonymousKeyboard() {
-  return new InlineKeyboard().text("ارسال پیام به مدیر", "support:start");
+  return InlineKeyboard.from([
+    [
+      {
+        text: "چت‌بات",
+        url: LINKS.anonymous.chatbot,
+        style: BUTTON_STYLES.primary,
+      },
+      {
+        text: "بگو بات",
+        url: LINKS.anonymous.bego,
+        style: BUTTON_STYLES.primary,
+      },
+    ],
+    [
+      {
+        text: "ارسال پیام به مدیر",
+        callback_data: "support:start",
+        style: BUTTON_STYLES.success,
+      },
+    ],
+  ]);
 }
