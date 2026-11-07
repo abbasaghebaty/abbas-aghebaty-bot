@@ -16,8 +16,8 @@ export function mainKeyboard() {
     ],
     [
       {
-        text: BUTTONS.main.anonymous,
-        style: BUTTON_STYLES.danger,
+        text: BUTTONS.main.support,
+        style: BUTTON_STYLES.success,
       },
     ],
   ]).resized();

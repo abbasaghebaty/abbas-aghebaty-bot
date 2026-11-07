@@ -1,9 +1,4 @@
 export const LINKS = {
-  anonymous: {
-    chatbot: "https://t.me/XBCHATBot?start=sec-hfeiahfabd",
-    bego: "https://t.me/begoo?start=_5025148012238",
-  },
-
   social: {
     instagram: "https://www.instagram.com/abbas.aghebaty",
     youtube: "https://www.youtube.com/@abbas.aghebaty",

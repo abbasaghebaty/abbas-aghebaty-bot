@@ -2,7 +2,7 @@ export const BUTTONS = {
   main: {
     socials: "شبکه‌های اجتماعی",
     skills: "مهارت‌ها و پروژه‌ها",
-    anonymous: "راه‌های ارتباطی",
+    support: "پیام به مدیر",
   },
 
   socials: {

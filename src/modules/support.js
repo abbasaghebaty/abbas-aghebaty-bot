@@ -1,10 +1,11 @@
 import { InlineKeyboard, Keyboard } from "grammy";
 import { mainKeyboard } from "../keyboards/main.js";
 import { createReactionKeyboard, registerReactionHandlers } from "./reactions.js";
+import { BUTTONS } from "../config/buttons.js";
 
 const CANCEL_TEXT = "لغو";
 const SUPPORT_PROMPT = "پیامت رو بفرست.\nبرای خروج، دکمه «لغو» رو بزن.";
-const SUPPORT_CANCELLED = "ارسال پیام لغو شد و به مدیر چیزی ارسال نشد.";
+
 const SUPPORT_BLOCKED = "امکان ارسال پیام به مدیر برای حساب شما فعال نیست.";
 
 function adminId(env) {
@@ -80,7 +81,7 @@ async function startSupport(ctx, env) {
   }
 
   await env.DB.prepare(
-    "INSERT INTO support_user_states (user_id, active) VALUES (?, 1) ON CONFLICT(user_id) DO UPDATE SET active = 1"
+    "INSERT INTO support_user_states (user_id, active, message_count, created_at) VALUES (?, 1, 0, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET active = 1, message_count = 0, created_at = datetime('now')"
   ).bind(ctx.from.id).run();
 
   const keyboard = Keyboard.from([[{ text: CANCEL_TEXT, style: "danger" }]])
@@ -155,14 +156,11 @@ async function forwardUserMessage(ctx, env) {
       ctx.message.message_id
     );
 
-    const state = await env.DB.prepare(
-      "SELECT active FROM support_user_states WHERE user_id = ?"
-    ).bind(ctx.from.id).first();
-    if (Number(state?.active) === 1) {
-      await env.DB.prepare("UPDATE support_user_states SET active = 2 WHERE user_id = ?")
-        .bind(ctx.from.id).run();
-      await ctx.reply("پیامت برای مدیر ارسال شد.");
-    }
+    await env.DB.prepare(
+      "UPDATE support_user_states SET message_count = message_count + 1 WHERE user_id = ? AND active = 1"
+    ).bind(ctx.from.id).run();
+
+
   } catch (error) {
     console.error("Support forward failed:", error);
     await ctx.reply("ارسال پیام انجام نشد. لطفاً دوباره تلاش کن.");
@@ -174,7 +172,13 @@ async function forwardAdminReply(ctx, env, mapped) {
     const copied = await ctx.api.copyMessage(
       mapped.user_id,
       ctx.chat.id,
-      ctx.message.message_id
+      ctx.message.message_id,
+      {
+        reply_parameters: {
+          message_id: mapped.peer_message_id,
+          allow_sending_without_reply: true,
+        },
+      }
     );
     await saveMessagePair(
       env.DB,
@@ -278,16 +282,25 @@ export function registerSupportHandlers(bot, env) {
     await ctx.editMessageText("کاربر " + userId + " از فهرست بلاک خارج شد.");
   });
 
+  bot.hears(BUTTONS.main.support, async (ctx) => {
+    await startSupport(ctx, env);
+  });
+
   bot.hears(CANCEL_TEXT, async (ctx, next) => {
     if (isAdmin(ctx, env)) return next();
     const state = await env.DB.prepare(
-      "SELECT active FROM support_user_states WHERE user_id = ?"
+      "SELECT active, message_count FROM support_user_states WHERE user_id = ?"
     ).bind(ctx.from.id).first();
     if (!state?.active) return next();
 
     await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
       .bind(ctx.from.id).run();
-    await ctx.reply(SUPPORT_CANCELLED, { reply_markup: mainKeyboard() });
+
+    const total = Number(state?.message_count || 0);
+    const summary = total > 0
+      ? `${total} پیام شما برای مدیر ارسال شد.`
+      : "ارسال پیام لغو شد؛ پیامی برای مدیر ارسال نشد.";
+    await ctx.reply(summary, { reply_markup: mainKeyboard() });
   });
 
   bot.command("block", (ctx) => blockUser(ctx, env));
@@ -296,9 +309,42 @@ export function registerSupportHandlers(bot, env) {
     await unblockUser(ctx, env, arg);
   });
   bot.command("blocked", (ctx) => showBlocked(ctx, env));
-  bot.command("support", async (ctx) => {
+  const showSupportPanel = async (ctx) => {
     if (!isAdmin(ctx, env)) return;
-    await ctx.reply("مدیریت پیام‌ها:\n• برای پاسخ، روی پیام کاربر Reply کن.\n• برای بلاک، روی پیام کاربر Reply کن و /block بفرست.\n• /block آیدی یا @username\n• /unblock آیدی\n• /blocked فهرست بلاک‌شده‌ها");
+    const blocked = await env.DB.prepare(
+      "SELECT COUNT(*) AS total FROM support_blocked_users"
+    ).first();
+    const keyboard = new InlineKeyboard()
+      .text("فهرست کاربران بلاک‌شده", "support:blocked")
+      .row()
+      .text("راهنمای مدیریت", "support:admin-help");
+    await ctx.reply(
+      "پنل مدیریت پشتیبانی\n\nکاربران بلاک‌شده: " + Number(blocked?.total || 0),
+      { reply_markup: keyboard }
+    );
+  };
+
+  bot.command("support", showSupportPanel);
+  bot.command("admin", showSupportPanel);
+
+  bot.callbackQuery("support:blocked", async (ctx) => {
+    if (!isAdmin(ctx, env)) {
+      await ctx.answerCallbackQuery({ text: "دسترسی ندارید." });
+      return;
+    }
+    await ctx.answerCallbackQuery();
+    await showBlocked(ctx, env);
+  });
+
+  bot.callbackQuery("support:admin-help", async (ctx) => {
+    if (!isAdmin(ctx, env)) {
+      await ctx.answerCallbackQuery({ text: "دسترسی ندارید." });
+      return;
+    }
+    await ctx.answerCallbackQuery();
+    await ctx.reply(
+      "راهنمای مدیریت پشتیبانی:\n• پاسخ به کاربر: روی پیام او Reply کنید.\n• بلاک: روی پیام کاربر Reply کنید و /block بفرستید.\n• بلاک با شناسه: /block آیدی یا @username\n• رفع بلاک: /unblock آیدی\n• فهرست بلاک‌شده‌ها: /blocked"
+    );
   });
 
   // /start and other commands must continue to their own handlers, not become support messages.
