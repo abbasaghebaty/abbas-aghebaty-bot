@@ -285,16 +285,13 @@ export function registerSupportHandlers(bot, env) {
   bot.hears(CANCEL_TEXT, async (ctx, next) => {
     if (isAdmin(ctx, env)) return next();
     const state = await env.DB.prepare(
-      "SELECT active FROM support_user_states WHERE user_id = ?"
+      "SELECT active, created_at FROM support_user_states WHERE user_id = ?"
     ).bind(ctx.from.id).first();
     if (!state?.active) return next();
 
-    const session = await env.DB.prepare(
-      "SELECT created_at FROM support_user_states WHERE user_id = ?"
-    ).bind(ctx.from.id).first();
     const sent = await env.DB.prepare(
       "SELECT COUNT(*) AS total FROM support_message_map WHERE user_id = ? AND chat_id = ? AND created_at >= ?"
-    ).bind(ctx.from.id, ctx.from.id, session?.created_at || "9999-12-31 23:59:59").first();
+    ).bind(ctx.from.id, ctx.from.id, state?.created_at || "9999-12-31 23:59:59").first();
 
     await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
       .bind(ctx.from.id).run();
@@ -322,7 +319,7 @@ export function registerSupportHandlers(bot, env) {
       .row()
       .text("راهنمای مدیریت", "support:admin-help");
     await ctx.reply(
-      "پنل مدیریت پشتیبانی\\n\\nکاربران بلاک‌شده: " + Number(blocked?.total || 0),
+      "پنل مدیریت پشتیبانی\n\nکاربران بلاک‌شده: " + Number(blocked?.total || 0),
       { reply_markup: keyboard }
     );
   };
@@ -346,7 +343,7 @@ export function registerSupportHandlers(bot, env) {
     }
     await ctx.answerCallbackQuery();
     await ctx.reply(
-      "راهنمای مدیریت پشتیبانی:\\n• پاسخ به کاربر: روی پیام او Reply کنید.\\n• بلاک: روی پیام کاربر Reply کنید و /block بفرستید.\\n• بلاک با شناسه: /block آیدی یا @username\\n• رفع بلاک: /unblock آیدی\\n• فهرست بلاک‌شده‌ها: /blocked"
+      "راهنمای مدیریت پشتیبانی:\n• پاسخ به کاربر: روی پیام او Reply کنید.\n• بلاک: روی پیام کاربر Reply کنید و /block بفرستید.\n• بلاک با شناسه: /block آیدی یا @username\n• رفع بلاک: /unblock آیدی\n• فهرست بلاک‌شده‌ها: /blocked"
     );
   });
 
