@@ -2,8 +2,6 @@ export const BUTTONS = {
   main: {
     socials: "شبکه‌های اجتماعی",
     skills: "مهارت‌ها و پروژه‌ها",
-    about: "درباره من",
-    buy: "خرید ویتوری",
     anonymous: "راه‌های ارتباطی",
   },
 
