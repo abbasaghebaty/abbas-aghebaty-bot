@@ -18,7 +18,7 @@ export default {
     if (url.pathname === "/register-webhook") {
       const webhookUrl = `${url.origin}/webhook`;
       const allowedUpdates = encodeURIComponent(
-        JSON.stringify(["message", "callback_query", "message_reaction"])
+        JSON.stringify(["message", "callback_query"])
       );
       const response = await fetch(
         `https://api.telegram.org/bot${env.BOT_TOKEN}/setWebhook?url=${encodeURIComponent(webhookUrl)}&allowed_updates=${allowedUpdates}`
