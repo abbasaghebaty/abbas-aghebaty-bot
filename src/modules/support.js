@@ -1,4 +1,5 @@
 import { InlineKeyboard, Keyboard } from "grammy";
+import { mainKeyboard } from "../keyboards/main.js";
 
 const CANCEL_TEXT = "لغو";
 const SUPPORT_PROMPT = "پیامت رو بفرست. می‌تونی متن، عکس، ویدیو، فایل یا هر محتوای پشتیبانی‌شده‌ای ارسال کنی.\nبرای خروج، دکمه «لغو» رو بزن یا /cancel رو بفرست.";
@@ -89,11 +90,7 @@ async function startSupport(ctx, env) {
 async function cancelSupport(ctx, env) {
   await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
     .bind(ctx.from.id).run();
-  await ctx.reply(SUPPORT_CANCELLED, {
-    reply_markup: new Keyboard().text("شبکه‌های اجتماعی").row()
-      .text("مهارت‌ها و پروژه‌ها").row()
-      .text("راه‌های ارتباطی").resized(),
-  });
+  await ctx.reply(SUPPORT_CANCELLED, { reply_markup: mainKeyboard() });
 }
 
 async function forwardUserMessage(ctx, env) {
@@ -250,12 +247,12 @@ export function registerSupportHandlers(bot, env) {
     await cancelSupport(ctx, env);
   });
 
-  bot.hears(CANCEL_TEXT, async (ctx) => {
+  bot.hears(CANCEL_TEXT, async (ctx, next) => {
     if (isAdmin(ctx, env)) return;
     const state = await env.DB.prepare(
       "SELECT active FROM support_user_states WHERE user_id = ?"
     ).bind(ctx.from.id).first();
-    if (!state?.active) return;
+    if (!state?.active) return next();
     await cancelSupport(ctx, env);
   });
 
