@@ -289,7 +289,7 @@ export function registerSupportHandlers(bot, env) {
   bot.hears(CANCEL_TEXT, async (ctx, next) => {
     if (isAdmin(ctx, env)) return next();
     const state = await env.DB.prepare(
-      "SELECT active, created_at FROM support_user_states WHERE user_id = ?"
+      "SELECT active, message_count FROM support_user_states WHERE user_id = ?"
     ).bind(ctx.from.id).first();
     if (!state?.active) return next();
 
