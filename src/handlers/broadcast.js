@@ -1,7 +1,4 @@
-// src/handlers/broadcast.js
-// Admin-only: sending /broadcast immediately sends the fixed message below to every user in D1.
-
-const ADMIN_ID = 7548075013;
+// Admin-only broadcast to users stored in D1.
 
 const BROADCAST_TEXT = `<b>اطلاعیه تغییر آیدی ربات</b>
 
@@ -17,34 +14,36 @@ const BROADCAST_TEXT = `<b>اطلاعیه تغییر آیدی ربات</b>
 
 export function registerBroadcastHandlers(bot, env) {
   bot.command("broadcast", async (ctx) => {
-    if (ctx.from?.id !== ADMIN_ID) return; // ignore everyone else
+    const adminId = Number(env.ADMIN_ID);
+    if (!Number.isSafeInteger(adminId) || ctx.from?.id !== adminId) return;
 
     try {
       await ctx.reply("در حال ارسال...");
 
-      const { results } = await env.DB.prepare(
+      const { results = [] } = await env.DB.prepare(
         "SELECT telegram_id FROM users"
       ).all();
 
       let sent = 0;
       let failed = 0;
-      const BATCH = 10; // far below Telegram's ~30 msg/sec limit
+      const BATCH = 10;
 
       for (let i = 0; i < results.length; i += BATCH) {
         const batch = results.slice(i, i + BATCH);
         const outcomes = await Promise.allSettled(
-          batch.map((u) =>
-            ctx.api.sendMessage(u.telegram_id, BROADCAST_TEXT, {
+          batch.map((user) =>
+            ctx.api.sendMessage(user.telegram_id, BROADCAST_TEXT, {
               parse_mode: "HTML",
               link_preview_options: { is_disabled: true },
             })
           )
         );
-        for (const o of outcomes) {
-          if (o.status === "fulfilled") sent++;
+
+        for (const outcome of outcomes) {
+          if (outcome.status === "fulfilled") sent++;
           else {
             failed++;
-            console.error("Broadcast failed:", o.reason?.description ?? o.reason);
+            console.error("Broadcast failed:", outcome.reason?.description ?? outcome.reason);
           }
         }
       }
@@ -52,9 +51,9 @@ export function registerBroadcastHandlers(bot, env) {
       await ctx.reply(`ارسال تمام شد.\n✅ موفق: ${sent}\n❌ ناموفق: ${failed}`);
     } catch (error) {
       console.error("Broadcast error:", error);
-      await ctx
-        .reply(`خطا در ارسال:\n${String(error?.description ?? error?.message ?? error)}`)
-        .catch(() => {});
+      await ctx.reply(
+        `خطا در ارسال:\n${String(error?.description ?? error?.message ?? error)}`
+      ).catch(() => {});
     }
   });
 }

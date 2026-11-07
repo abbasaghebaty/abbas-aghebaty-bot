@@ -1,5 +1,6 @@
 import { Bot } from "grammy";
 import { upsertUser } from "../database/users.js";
+import { registerSupportHandlers } from "../modules/support.js";
 import { registerStartHandler } from "../handlers/start.js";
 import { registerMainMenuHandlers } from "../handlers/mainMenu.js";
 import { registerSocialHandlers } from "../handlers/socials.js";
@@ -21,6 +22,8 @@ export function createBot(env) {
     await next();
   });
 
+  // Register support commands and relay middleware before the general handlers.
+  registerSupportHandlers(bot, env);
   registerStartHandler(bot);
   registerMainMenuHandlers(bot);
   registerSocialHandlers(bot);

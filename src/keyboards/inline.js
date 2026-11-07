@@ -1,5 +1,4 @@
 import { InlineKeyboard } from "grammy";
-
 import { LINKS } from "../config/links.js";
 import { BUTTON_STYLES } from "../config/buttonStyles.js";
 
@@ -15,6 +14,13 @@ export function anonymousKeyboard() {
         text: "بگو بات",
         url: LINKS.anonymous.bego,
         style: BUTTON_STYLES.primary,
+      },
+    ],
+    [
+      {
+        text: "ارسال پیام به مدیر",
+        callback_data: "support:start",
+        style: BUTTON_STYLES.success,
       },
     ],
   ]);

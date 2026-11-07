@@ -2,17 +2,18 @@ name = "abbas-aghebaty-bot"
 main = "src/index.js"
 compatibility_date = "2024-09-01"
 
-# متغیرهای عمومی (غیر محرمانه)
+# متغیرهای عمومی و غیرمحرمانه
 [vars]
-ADMIN_ID = "7548075013"   # آیدی عددی تلگرام عباس (ادمین) را اینجا بگذار
+# شناسه عددی مدیر، credential محسوب نمی‌شود و برای حفظ تنظیم قبلی در vars می‌ماند.
+ADMIN_ID = "7548075013"
+SUPPORT_RATE_LIMIT = "5"
+SUPPORT_RATE_WINDOW = "60"
 
 # دیتابیس D1
 [[d1_databases]]
-binding = "DB"                      # در کد با env.DB صدا زده می‌شود
+binding = "DB"
 database_name = "abbas-aghebaty-bot"
-database_id = "df9f5c73-eedb-4352-bde6-5b8aea6167e0"    # بعد از ساخت دیتابیس با wrangler اینجا جایگزین کن
+database_id = "df9f5c73-eedb-4352-bde6-5b8aea6167e0"
 
-
-# نکته: BOT_TOKEN یک Secret است و اینجا نوشته نمی‌شود.
-# با دستور زیر تنظیمش کن:
-#   wrangler secret put BOT_TOKEN 
+# توکن ربات فقط باید به‌صورت Secret در Cloudflare تنظیم شود:
+# npx wrangler secret put BOT_TOKEN

@@ -1,0 +1,24 @@
+name: Validate Worker source
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [feature/two-way-support]
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -e
+          while IFS= read -r file; do
+            node --check "$file"
+          done < <(find src -type f -name '*.js' -print)
