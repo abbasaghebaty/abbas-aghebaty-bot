@@ -1,4 +1,4 @@
-import { InlineKeyboard } from "grammy";
+import { InlineKeyboard, Keyboard } from "grammy";
 import { mainKeyboard } from "../keyboards/main.js";
 import { createReactionKeyboard, registerReactionHandlers } from "./reactions.js";
 
@@ -83,7 +83,7 @@ async function startSupport(ctx, env) {
     "INSERT INTO support_user_states (user_id, active) VALUES (?, 1) ON CONFLICT(user_id) DO UPDATE SET active = 1"
   ).bind(ctx.from.id).run();
 
-  const keyboard = { inline_keyboard: [[{ text: CANCEL_TEXT, callback_data: "support:cancel", style: "danger" }]] };
+  const keyboard = new Keyboard().text(CANCEL_TEXT).resized().persistent();
   await ctx.reply(SUPPORT_PROMPT, { reply_markup: keyboard });
 }
 
@@ -153,7 +153,14 @@ async function forwardUserMessage(ctx, env) {
       ctx.message.message_id
     );
 
-    await ctx.reply("پیامت برای مدیر ارسال شد. برای پایان ارتباط، «لغو» رو بزن.");
+    const state = await env.DB.prepare(
+      "SELECT active FROM support_user_states WHERE user_id = ?"
+    ).bind(ctx.from.id).first();
+    if (Number(state?.active) === 1) {
+      await env.DB.prepare("UPDATE support_user_states SET active = 2 WHERE user_id = ?")
+        .bind(ctx.from.id).run();
+      await ctx.reply("پیامت برای مدیر ارسال شد.");
+    }
   } catch (error) {
     console.error("Support forward failed:", error);
     await ctx.reply("ارسال پیام انجام نشد. لطفاً دوباره تلاش کن.");
@@ -269,16 +276,16 @@ export function registerSupportHandlers(bot, env) {
     await ctx.editMessageText("کاربر " + userId + " از فهرست بلاک خارج شد.");
   });
 
-  bot.callbackQuery("support:cancel", async (ctx) => {
-    if (isAdmin(ctx, env)) {
-      await ctx.answerCallbackQuery({ text: "این دکمه برای کاربران است." });
-      return;
-    }
+  bot.hears(CANCEL_TEXT, async (ctx, next) => {
+    if (isAdmin(ctx, env)) return next();
+    const state = await env.DB.prepare(
+      "SELECT active FROM support_user_states WHERE user_id = ?"
+    ).bind(ctx.from.id).first();
+    if (!state?.active) return next();
+
     await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
       .bind(ctx.from.id).run();
-    await ctx.answerCallbackQuery();
-    await ctx.editMessageText(SUPPORT_CANCELLED);
-    await ctx.reply("به منوی اصلی برگشتی.", { reply_markup: mainKeyboard() });
+    await ctx.reply(SUPPORT_CANCELLED, { reply_markup: mainKeyboard() });
   });
 
   bot.command("block", (ctx) => blockUser(ctx, env));
