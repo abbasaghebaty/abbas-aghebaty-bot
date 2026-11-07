@@ -17,7 +17,7 @@ const REACTION_ROWS = [
 export function createReactionKeyboard(selected = null) {
   return {
     inline_keyboard: REACTION_ROWS.map((row) => row.map((key) => ({
-      text: (selected === key ? "🔵 " : "") + REACTIONS[key],
+      text: REACTIONS[key],
       callback_data: "support:react:" + key,
       ...(selected === key ? { style: "primary" } : {}),
     }))),
@@ -51,13 +51,21 @@ export function registerReactionHandlers(bot, env) {
         mapped.peer_message_id,
         [{ type: "emoji", emoji }]
       );
-      await ctx.editMessageReplyMarkup({ reply_markup: createReactionKeyboard(selected) });
-      await ctx.answerCallbackQuery({ text: "واکنش ثبت شد." });
     } catch (error) {
-      console.error("Support reaction failed:", error);
+      console.error("Support reaction API failed:", error);
       await ctx.answerCallbackQuery({
-        text: "ثبت واکنش ناموفق بود؛ ممکن است پیام دیگر در دسترس نباشد.",
+        text: "ثبت این واکنش در گفت‌وگوی کاربر ممکن نیست.",
       });
+      return;
     }
+
+    // Updating the button appearance is independent from applying the reaction.
+    // A markup-edit failure must not report that the reaction itself failed.
+    try {
+      await ctx.editMessageReplyMarkup({ reply_markup: createReactionKeyboard(selected) });
+    } catch (error) {
+      console.warn("Support reaction button update failed:", error);
+    }
+    await ctx.answerCallbackQuery({ text: "واکنش ثبت شد." });
   });
 }
