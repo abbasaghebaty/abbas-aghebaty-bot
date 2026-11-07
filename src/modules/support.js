@@ -114,7 +114,6 @@ async function forwardUserMessage(ctx, env) {
   }
 
   const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ") || "کاربر";
-  const username = ctx.from.username ? "@" + ctx.from.username : "بدون یوزرنیم";
   const profile = '<a href="tg://user?id=' + ctx.from.id + '">' + escapeHtml(name) + "</a>";
   await ctx.api.sendMessage(managerId, profile + "\n" + escapeHtml(username) + "\n\n", {
     parse_mode: "HTML",
@@ -299,19 +298,4 @@ export function registerSupportHandlers(bot, env) {
     await forwardUserMessage(ctx, env);
   });
 
-  bot.on("message_reaction", async (ctx) => {
-    const update = ctx.update.message_reaction;
-    const mapped = await getMappedUser(env.DB, update.chat.id, update.message_id);
-    if (!mapped) return;
-
-    try {
-      await ctx.api.setMessageReaction(
-        mapped.peer_chat_id,
-        mapped.peer_message_id,
-        update.new_reaction
-      );
-    } catch (error) {
-      console.error("Reaction sync failed:", error);
-    }
-  });
 }
