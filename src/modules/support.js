@@ -3,7 +3,6 @@ import { mainKeyboard } from "../keyboards/main.js";
 
 const CANCEL_TEXT = "لغو";
 const SUPPORT_PROMPT = "پیامت رو بفرست. می‌تونی متن، عکس، ویدیو، فایل یا هر محتوای پشتیبانی‌شده‌ای ارسال کنی.\nبرای خروج، دکمه «لغو» رو بزن یا /cancel رو بفرست.";
-const SUPPORT_STARTED = "حالت ارسال پیام فعال شد.";
 const SUPPORT_CANCELLED = "ارسال پیام لغو شد و به مدیر چیزی ارسال نشد.";
 const SUPPORT_BLOCKED = "امکان ارسال پیام به مدیر برای حساب شما فعال نیست.";
 
@@ -115,7 +114,7 @@ async function forwardUserMessage(ctx, env) {
 
   const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ") || "کاربر";
   const profile = '<a href="tg://user?id=' + ctx.from.id + '">' + escapeHtml(name) + "</a>";
-  await ctx.api.sendMessage(managerId, profile + "\n" + escapeHtml(username) + "\n\n", {
+  await ctx.api.sendMessage(managerId, profile + "\n\n", {
     parse_mode: "HTML",
     link_preview_options: { is_disabled: true },
   });
