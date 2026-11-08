@@ -289,6 +289,7 @@ async function forwardAdminReply(ctx, env, mapped) {
 async function blockUser(ctx, env) {
   if (!isAdmin(ctx, env)) return;
   let userId = null;
+  let notificationHeaderId = null;
   const replied = ctx.message.reply_to_message;
   if (replied) {
     const mapped = await getMappedUser(env.DB, ctx.chat.id, replied.message_id);
@@ -298,7 +299,10 @@ async function blockUser(ctx, env) {
       const notification = await env.DB.prepare(
         "SELECT user_id FROM support_notifications WHERE admin_chat_id = ? AND header_message_id = ?"
       ).bind(ctx.chat.id, replied.message_id).first();
-      if (notification) userId = Number(notification.user_id);
+      if (notification) {
+        userId = Number(notification.user_id);
+        notificationHeaderId = Number(replied.message_id);
+      }
     }
   }
 
@@ -328,6 +332,9 @@ async function blockUser(ctx, env) {
     env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(userId),
     env.DB.prepare("UPDATE support_notifications SET read_at = COALESCE(read_at, datetime('now')) WHERE user_id = ? AND read_at IS NULL").bind(userId),
   ]);
+  if (notificationHeaderId) {
+    try { await ctx.api.deleteMessage(ctx.chat.id, notificationHeaderId); } catch {}
+  }
   await ctx.reply("کاربر با آیدی " + userId + " بلاک شد.");
 }
 
