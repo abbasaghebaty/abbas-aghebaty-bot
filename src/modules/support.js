@@ -391,6 +391,7 @@ export function registerSupportHandlers(bot, env) {
       return;
     }
     if (notification.read_at) {
+      try { await ctx.api.deleteMessage(ctx.chat.id, message.message_id); } catch {}
       await ctx.answerCallbackQuery({ text: "این اعلان قبلاً مشاهده شده است." });
       return;
     }
@@ -468,8 +469,7 @@ export function registerSupportHandlers(bot, env) {
       );
     }
 
-    // Remove the inbox card only after all messages have been delivered successfully.
-    await ctx.api.deleteMessage(ctx.chat.id, message.message_id);
+    // All messages are now delivered and mapped; mark the batch read and consume its staging rows.
     await env.DB.batch([
       env.DB.prepare(
         "UPDATE support_notifications SET read_at = datetime('now') WHERE admin_chat_id = ? AND header_message_id = ? AND read_at IS NULL"
@@ -477,7 +477,8 @@ export function registerSupportHandlers(bot, env) {
       env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(notification.user_id),
       env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(notification.user_id),
     ]);
-    await ctx.answerCallbackQuery({ text: "پیام‌ها دریافت و به‌عنوان مشاهده‌شده ثبت شدند." });
+    await ctx.api.deleteMessage(ctx.chat.id, message.message_id);
+
   });
 
   bot.callbackQuery(/^support:unblock:(\d+)$/, async (ctx) => {
@@ -553,10 +554,9 @@ export function registerSupportHandlers(bot, env) {
       if (!delivered) return;
 
       const total = Number(state.message_count || 0);
-      await env.DB.batch([
-        env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(ctx.from.id),
-        env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(ctx.from.id),
-      ]);
+      await env.DB.prepare(
+        "DELETE FROM support_user_states WHERE user_id = ?"
+      ).bind(ctx.from.id).run();
 
       await ctx.reply(
         total > 0
