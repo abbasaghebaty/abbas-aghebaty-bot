@@ -1,5 +1,6 @@
 import { webhookCallback } from "grammy";
 import { createBot } from "./bot/createBot.js";
+import { processSupportDeliveryQueue } from "./modules/supportDeliveryQueue.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -30,5 +31,14 @@ export default {
     }
 
     return new Response("Abbas Assistant Bot is running.");
+  },
+
+  async scheduled(controller, env, ctx) {
+    const bot = createBot(env);
+    ctx.waitUntil(
+      processSupportDeliveryQueue(bot.api, env, 20).catch((error) => {
+        console.error("Scheduled support delivery retry failed:", error);
+      })
+    );
   },
 };
