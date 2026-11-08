@@ -228,7 +228,6 @@ async function deliverPendingMessages(ctx, env, state) {
       "پیام‌های جدید از " + profile + "\n" + "تعداد پیام‌ها: " + pending.results.length,
       {
         parse_mode: "HTML",
-        reply_markup: createReactionKeyboard(),
       }
     );
     headerId = header.message_id;
@@ -253,6 +252,7 @@ async function deliverPendingMessages(ctx, env, state) {
           message_id: replyToMessageId,
           allow_sending_without_reply: true,
         },
+        reply_markup: createReactionKeyboard(),
       }
     );
 
@@ -333,8 +333,10 @@ async function blockUser(ctx, env) {
   await env.DB.prepare(
     "INSERT OR IGNORE INTO support_blocked_users (user_id) VALUES (?)"
   ).bind(userId).run();
-  await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
-    .bind(userId).run();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(userId),
+    env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(userId),
+  ]);
   await ctx.reply("کاربر با آیدی " + userId + " بلاک شد.");
 }
 
