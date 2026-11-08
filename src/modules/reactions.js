@@ -35,7 +35,7 @@ export function createReactionKeyboard(selected = null, availableReactions = nul
   rows.push([{
     text: "حذف ری‌اکشن",
     callback_data: "support:react:clear",
-    ...(selected === null ? { style: "primary" } : {}),
+    // Keep the clear action visually neutral (Telegram's default button style).
   }]);
 
   return { inline_keyboard: rows };
