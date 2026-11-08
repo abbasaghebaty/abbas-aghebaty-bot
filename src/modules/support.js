@@ -488,6 +488,18 @@ export function registerSupportHandlers(bot, env) {
       await env.DB.prepare(
         "UPDATE support_notifications SET read_at = datetime('now') WHERE admin_chat_id = ? AND header_message_id = ?"
       ).bind(ctx.chat.id, message.message_id).run();
+      const readHeaderText = (message.text || "")
+        .replace("پیام خوانده‌نشده", "پیام") +
+        "\n\n<b>وضعیت:</b> خوانده‌شده";
+      await ctx.api.editMessageText(
+        ctx.chat.id,
+        message.message_id,
+        readHeaderText,
+        {
+          parse_mode: "HTML",
+          reply_markup: new InlineKeyboard().text("اتمام چت", "support:end"),
+        }
+      );
       return;
     }
 
