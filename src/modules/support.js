@@ -231,6 +231,16 @@ async function deliverPendingMessages(ctx, env, state) {
 
   if (state.admin_header_message_id) return true;
 
+  const existingNotification = await env.DB.prepare(
+    "SELECT header_message_id FROM support_notifications WHERE admin_chat_id = ? AND user_id = ? AND read_at IS NULL ORDER BY id DESC LIMIT 1"
+  ).bind(managerId, ctx.from.id).first();
+  if (existingNotification) {
+    await env.DB.prepare(
+      "UPDATE support_user_states SET admin_header_message_id = ? WHERE user_id = ? AND active = 2"
+    ).bind(existingNotification.header_message_id, ctx.from.id).run();
+    return true;
+  }
+
   const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ") || "کاربر";
   const profile = '<a href="tg://user?id=' + ctx.from.id + '">' + escapeHtml(name) + "</a>";
   const headerText =
@@ -552,7 +562,7 @@ export function registerSupportHandlers(bot, env) {
       "UPDATE support_user_states SET active = 2 WHERE user_id = ?"
     ).bind(ctx.from.id).run();
 
-    await ctx.reply("در حال ارسال پیام‌های گفتگو برای مدیریت...", {
+    await ctx.reply("گفتگو ثبت می‌شه؛ پیام‌ها تا زمان انتخاب «مشاهده پیام‌ها» فقط ذخیره می‌مونن.", {
       reply_markup: finalizingKeyboard(),
     });
 
@@ -567,14 +577,14 @@ export function registerSupportHandlers(bot, env) {
 
       await ctx.reply(
         total > 0
-          ? `گفتگو پایان یافت و ${total} پیام برای مدیریت ارسال شد.`
+          ? `گفتگو پایان یافت و ${total} پیام تا زمان مشاهده مدیریت ذخیره شد.`
           : "گفتگو بدون ارسال پیام پایان یافت.",
         { reply_markup: mainKeyboard() }
       );
     } catch (error) {
       console.error("Support final delivery failed:", error);
       await ctx.reply(
-        "ارسال همه پیام‌ها کامل نشد. پیام‌های باقی‌مانده هنوز ذخیره‌اند؛ برای ادامه دوباره «اتمام گفتگو» رو بزن.",
+        "ثبت اعلان کامل نشد. پیام‌ها هنوز ذخیره‌اند؛ برای تلاش دوباره «اتمام گفتگو» رو بزن.",
         { reply_markup: finalizingKeyboard() }
       );
     }
