@@ -52,6 +52,40 @@ function escapeHtml(value = "") {
   })[char]);
 }
 
+function buildReadHeader(message) {
+  const originalText = message.text || "";
+  const oldPhrase = "پیام خوانده‌نشده";
+  const newPhrase = "پیام";
+  const start = originalText.indexOf(oldPhrase);
+  if (start < 0) {
+    return {
+      text: originalText + "\n\nوضعیت: خوانده‌شده",
+      entities: message.entities || [],
+    };
+  }
+
+  const end = start + oldPhrase.length;
+  const delta = oldPhrase.length - newPhrase.length;
+  const text = originalText.slice(0, start) + newPhrase + originalText.slice(end);
+  const entities = (message.entities || []).map((entity) => {
+    const oldStart = entity.offset;
+    const oldEnd = entity.offset + entity.length;
+    const mapOffset = (offset) => {
+      if (offset <= start) return offset;
+      if (offset >= end) return offset - delta;
+      return start + Math.min(offset - start, newPhrase.length);
+    };
+    const nextStart = mapOffset(oldStart);
+    const nextEnd = mapOffset(oldEnd);
+    return { ...entity, offset: nextStart, length: Math.max(0, nextEnd - nextStart) };
+  }).filter((entity) => entity.length > 0);
+
+  return {
+    text: text + "\n\nوضعیت: خوانده‌شده",
+    entities,
+  };
+}
+
 async function getMappedUser(db, chatId, messageId) {
   return db.prepare(
     "SELECT user_id, peer_chat_id, peer_message_id FROM support_message_map WHERE chat_id = ? AND message_id = ?"
@@ -132,8 +166,8 @@ async function startSupport(ctx, env) {
 
   const message =
     "از این بخش می‌تونی مستقیماً با مدیریت در ارتباط باشی.\n\n" +
-    "اگر سؤال، پیشنهاد یا موضوعی داری، روی «شروع گفتگو» بزن و تمام حرفت رو در یک پیام واحد بنویس و ارسال کن.\n" +
-    "لطفاً برای هر درخواست فقط یک پیام کامل بفرست.";
+    "اگر سؤال، پیشنهاد یا موضوعی داری، روی «شروع گفتگو» بزن و توضیحاتت رو برای مدیریت بفرست.\n" +
+    "لطفاً تا حد امکان تمام توضیحاتت رو در یک پیام بنویس.";
 
   await ctx.reply(message, { reply_markup: contactChoiceKeyboard() });
 }
@@ -194,11 +228,6 @@ async function forwardUserMessage(ctx, env) {
   ).bind(ctx.from.id).first();
 
   if (Number(state?.active) !== 1) return;
-
-  if (Number(state.message_count || 0) >= 1) {
-    await ctx.reply("لطفاً تمام توضیحاتت رو در همان یک پیام اول بنویس؛ پیام دیگری برای مدیریت ثبت نمی‌شه.");
-    return;
-  }
 
   try {
     await env.DB.prepare(
@@ -488,15 +517,13 @@ export function registerSupportHandlers(bot, env) {
       await env.DB.prepare(
         "UPDATE support_notifications SET read_at = datetime('now') WHERE admin_chat_id = ? AND header_message_id = ?"
       ).bind(ctx.chat.id, message.message_id).run();
-      const readHeaderText = (message.text || "")
-        .replace("پیام خوانده‌نشده", "پیام") +
-        "\n\n<b>وضعیت:</b> خوانده‌شده";
+      const readHeader = buildReadHeader(message);
       await ctx.api.editMessageText(
         ctx.chat.id,
         message.message_id,
-        readHeaderText,
+        readHeader.text,
         {
-          parse_mode: "HTML",
+          entities: readHeader.entities,
           reply_markup: new InlineKeyboard().text("اتمام چت", "support:end"),
         }
       );
@@ -552,15 +579,13 @@ export function registerSupportHandlers(bot, env) {
       env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(notification.user_id),
     ]);
 
-    const readHeaderText = (message.text || "")
-      .replace("پیام خوانده‌نشده", "پیام") +
-      "\n\n<b>وضعیت:</b> خوانده‌شده";
+    const readHeader = buildReadHeader(message);
     await ctx.api.editMessageText(
       ctx.chat.id,
       message.message_id,
-      readHeaderText,
+      readHeader.text,
       {
-        parse_mode: "HTML",
+        entities: readHeader.entities,
         reply_markup: new InlineKeyboard().text("اتمام چت", "support:end"),
       }
     );
