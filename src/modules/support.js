@@ -132,8 +132,8 @@ async function startSupport(ctx, env) {
 
   const message =
     "از این بخش می‌تونی مستقیماً با مدیریت در ارتباط باشی.\n\n" +
-    "اگر سؤال، پیشنهاد یا موضوعی برای مطرح‌کردن داری، روی «شروع گفتگو» بزن و پیام خودت رو ارسال کن.\n" +
-    "هر زمان هم منصرف شدی، می‌تونی گفتگو رو لغو یا تمام کنی.";
+    "اگر سؤال، پیشنهاد یا موضوعی داری، روی «شروع گفتگو» بزن و تمام حرفت رو در یک پیام واحد بنویس و ارسال کن.\n" +
+    "لطفاً برای هر درخواست فقط یک پیام کامل بفرست.";
 
   await ctx.reply(message, { reply_markup: contactChoiceKeyboard() });
 }
@@ -194,6 +194,11 @@ async function forwardUserMessage(ctx, env) {
   ).bind(ctx.from.id).first();
 
   if (Number(state?.active) !== 1) return;
+
+  if (Number(state.message_count || 0) >= 1) {
+    await ctx.reply("لطفاً تمام توضیحاتت رو در همان یک پیام اول بنویس؛ پیام دیگری برای مدیریت ثبت نمی‌شه.");
+    return;
+  }
 
   try {
     await env.DB.prepare(
@@ -379,6 +384,57 @@ async function showBlocked(ctx, env) {
   await ctx.reply("کاربران بلاک‌شده:", { reply_markup: keyboard });
 }
 
+async function finishAdminChat(ctx, env) {
+  if (!isAdmin(ctx, env)) {
+    await ctx.answerCallbackQuery({ text: "دسترسی ندارید." });
+    return;
+  }
+
+  const header = ctx.callbackQuery.message;
+  if (!header) {
+    await ctx.answerCallbackQuery({ text: "پیام گفتگو پیدا نشد." });
+    return;
+  }
+
+  const notification = await env.DB.prepare(
+    "SELECT user_id, read_at FROM support_notifications WHERE admin_chat_id = ? AND header_message_id = ?"
+  ).bind(ctx.chat.id, header.message_id).first();
+
+  if (!notification || !notification.read_at) {
+    await ctx.answerCallbackQuery({ text: "ابتدا باید پیام‌ها را مشاهده کنید." });
+    return;
+  }
+
+  const mappedMessages = await env.DB.prepare(
+    "SELECT message_id FROM support_message_map WHERE chat_id = ? AND user_id = ? AND peer_chat_id = ?"
+  ).bind(ctx.chat.id, notification.user_id, notification.user_id).all();
+
+  let failed = 0;
+  for (const item of mappedMessages.results || []) {
+    try {
+      await ctx.api.deleteMessage(ctx.chat.id, Number(item.message_id));
+    } catch (error) {
+      failed++;
+      console.warn("Could not delete support conversation message:", item.message_id, error);
+    }
+  }
+
+  try {
+    await ctx.api.deleteMessage(ctx.chat.id, header.message_id);
+  } catch (error) {
+    failed++;
+    console.warn("Could not delete support notification header:", error);
+  }
+
+  await env.DB.prepare(
+    "DELETE FROM support_message_map WHERE user_id = ?"
+  ).bind(notification.user_id).run();
+
+  await ctx.answerCallbackQuery({
+    text: failed ? `گفتگو بسته شد؛ حذف ${failed} پیام ناموفق بود.` : "گفتگو و پیام‌های آن پاک شدند.",
+  });
+}
+
 export function registerSupportHandlers(bot, env) {
   registerReactionHandlers(bot, env);
 
@@ -483,6 +539,23 @@ export function registerSupportHandlers(bot, env) {
       env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(notification.user_id),
       env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(notification.user_id),
     ]);
+
+    const readHeaderText = (message.text || "")
+      .replace("پیام خوانده‌نشده", "پیام") +
+      "\n\n<b>وضعیت:</b> خوانده‌شده";
+    await ctx.api.editMessageText(
+      ctx.chat.id,
+      message.message_id,
+      readHeaderText,
+      {
+        parse_mode: "HTML",
+        reply_markup: new InlineKeyboard().text("اتمام چت", "support:end"),
+      }
+    );
+  });
+
+  bot.callbackQuery("support:end", async (ctx) => {
+    await finishAdminChat(ctx, env);
   });
 
   bot.callbackQuery(/^support:unblock:(\d+)$/, async (ctx) => {
