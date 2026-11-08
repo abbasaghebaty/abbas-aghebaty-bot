@@ -2,7 +2,12 @@ export const BUTTONS = {
   main: {
     socials: "شبکه‌های اجتماعی",
     skills: "مهارت‌ها و پروژه‌ها",
-    support: "پیام به مدیر",
+    support: "ارتباط با مدیریت",
+  },
+
+  support: {
+    start: "شروع گفتگو",
+    end: "اتمام گفتگو",
   },
 
   socials: {
