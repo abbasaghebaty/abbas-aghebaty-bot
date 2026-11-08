@@ -35,6 +35,15 @@ export const PROJECTS_TEXT = `
 هدف آن ساده‌تر کردن فرآیند آماده‌سازی متن برای انتشار در شبکه‌های اجتماعی است.
 </blockquote>
 
+<a href="https://abbasaghebaty.github.io/lesson-dashboard/"><b>Study Planner</b></a>
+· <a href="https://t.me/StudyReplanner_bot"><b>ربات تلگرام</b></a>
+
+<blockquote expandable>
+سامانه‌ای برای برنامه‌ریزی و پایش امور درسی که تکالیف، امتحان‌ها و برنامه مطالعه را یکپارچه مدیریت می‌کند.
+با این ابزار می‌توان مشخص کرد چه مباحثی باید تا چه زمانی مطالعه شوند، چه تکالیفی باقی مانده و چه امتحان‌هایی پیش رو هستند.
+این پروژه از دو بخش تشکیل شده: داشبورد تحت وب برای مشاهده و مدیریت برنامه و ربات تلگرام برای دسترسی و پیگیری آسان‌تر.
+</blockquote>
+
 
 <b>ربات‌ها</b>
 
@@ -46,7 +55,7 @@ export const PROJECTS_TEXT = `
 ساختار ربات به شکلی طراحی شده که کاربر بتواند خدمات و محصولات موردنظر خود را سریع پیدا کند.
 </blockquote>
 
-<a href="${LINKS.projects.assistant}"><b>Abbas Assistant Bot</b></a>
+<a href="https://t.me/aghebaty_bot"><b>Abbas Assistant Bot</b></a>
 
 <blockquote expandable>
 دستیار شخصی تلگرامی برای معرفی من، پروژه‌ها و راه‌های ارتباطی.
