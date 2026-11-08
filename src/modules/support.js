@@ -3,10 +3,31 @@ import { mainKeyboard } from "../keyboards/main.js";
 import { createReactionKeyboard, registerReactionHandlers } from "./reactions.js";
 import { BUTTONS } from "../config/buttons.js";
 
+// متن‌ها و کیبوردهای جریان ارتباط با مدیریت در همین ماژول متمرکز شده‌اند.
 const CANCEL_TEXT = "لغو";
-const SUPPORT_PROMPT = "پیامت رو بفرست.\nبرای خروج، دکمه «لغو» رو بزن.";
+const START_TEXT = BUTTONS.support.start;
+const END_CHAT_TEXT = BUTTONS.support.end;
+const SUPPORT_BLOCKED = "امکان استفاده از بخش ارتباط با مدیریت برای حساب شما فعال نیست.";
 
-const SUPPORT_BLOCKED = "امکان ارسال پیام به مدیر برای حساب شما فعال نیست.";
+function contactChoiceKeyboard() {
+  return Keyboard.from([
+    [{ text: START_TEXT, style: "success" }],
+    [{ text: CANCEL_TEXT, style: "danger" }],
+  ]).resized().persistent();
+}
+
+function waitingKeyboard() {
+  return Keyboard.from([[{ text: CANCEL_TEXT, style: "danger" }]])
+    .resized()
+    .persistent();
+}
+
+function activeChatKeyboard() {
+  return Keyboard.from([[
+    { text: END_CHAT_TEXT, style: "success" },
+    { text: CANCEL_TEXT, style: "danger" },
+  ]]).resized().persistent();
+}
 
 function adminId(env) {
   const value = Number(env.ADMIN_ID);
@@ -70,6 +91,7 @@ async function withinRateLimit(db, userId, env) {
   return true;
 }
 
+// مرحله اول فقط راه ارتباطی را معرفی می‌کند؛ تا انتخاب «شروع گفتگو» هیچ پیامی دریافت نمی‌شود.
 async function startSupport(ctx, env) {
   if (isAdmin(ctx, env)) {
     await ctx.reply("شما مدیر ربات هستید؛ برای پاسخ به پیام کاربران، روی پیام دریافتی Reply کنید.");
@@ -80,14 +102,33 @@ async function startSupport(ctx, env) {
     return;
   }
 
+  const message =
+    "از این بخش می‌تونی مستقیماً با مدیریت در ارتباط باشی.\n\n" +
+    "اگر سؤال، پیشنهاد یا موضوعی برای مطرح‌کردن داری، روی «شروع گفتگو» بزن و پیام خودت رو ارسال کن.\n" +
+    "هر زمان هم منصرف شدی، می‌تونی گفتگو رو لغو یا تمام کنی.";
+
+  await ctx.reply(message, { reply_markup: contactChoiceKeyboard() });
+}
+
+// شروع واقعی دریافت پیام فقط با انتخاب دکمه سبز انجام می‌شود.
+async function beginSupport(ctx, env) {
+  if (isAdmin(ctx, env)) {
+    await ctx.reply("شما مدیر ربات هستید؛ برای پاسخ به پیام کاربران، روی پیام دریافتی Reply کنید.");
+    return;
+  }
+  if (await isBlocked(env.DB, ctx.from.id)) {
+    await ctx.reply(SUPPORT_BLOCKED, { reply_markup: mainKeyboard() });
+    return;
+  }
+
   await env.DB.prepare(
     "INSERT INTO support_user_states (user_id, active, message_count, created_at) VALUES (?, 1, 0, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET active = 1, message_count = 0, created_at = datetime('now')"
   ).bind(ctx.from.id).run();
 
-  const keyboard = Keyboard.from([[{ text: CANCEL_TEXT, style: "danger" }]])
-    .resized()
-    .persistent();
-  await ctx.reply(SUPPORT_PROMPT, { reply_markup: keyboard });
+  await ctx.reply(
+    "گفتگو شروع شد. حالا پیام یا فایل موردنظرت رو بفرست.",
+    { reply_markup: waitingKeyboard() }
+  );
 }
 
 async function forwardUserMessage(ctx, env) {
@@ -109,6 +150,10 @@ async function forwardUserMessage(ctx, env) {
     await ctx.reply("تعداد پیام‌ها در بازهٔ کوتاه بیش از حد مجازه. کمی صبر کن و دوباره بفرست.");
     return;
   }
+
+  const previousState = await env.DB.prepare(
+    "SELECT message_count FROM support_user_states WHERE user_id = ? AND active = 1"
+  ).bind(ctx.from.id).first();
 
   const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ") || "کاربر";
   const profile = '<a href="tg://user?id=' + ctx.from.id + '">' + escapeHtml(name) + "</a>";
@@ -160,6 +205,12 @@ async function forwardUserMessage(ctx, env) {
       "UPDATE support_user_states SET message_count = message_count + 1 WHERE user_id = ? AND active = 1"
     ).bind(ctx.from.id).run();
 
+    // پس از تحویل اولین پیام، کیبورد به حالت گفتگوی فعال تغییر می‌کند.
+    if (Number(previousState?.message_count || 0) === 0) {
+      await ctx.reply("پیامت برای مدیریت ارسال شد. می‌تونی پیام‌های بعدی رو هم بفرستی.", {
+        reply_markup: activeChatKeyboard(),
+      });
+    }
 
   } catch (error) {
     console.error("Support forward failed:", error);
@@ -286,6 +337,16 @@ export function registerSupportHandlers(bot, env) {
     await startSupport(ctx, env);
   });
 
+  bot.hears(START_TEXT, async (ctx, next) => {
+    if (isAdmin(ctx, env)) return next();
+    const existing = await env.DB.prepare(
+      "SELECT active FROM support_user_states WHERE user_id = ?"
+    ).bind(ctx.from.id).first();
+    if (existing?.active) return next();
+    await beginSupport(ctx, env);
+  });
+
+  // «لغو» پیش از اولین پیام، درخواست را بدون ارسال پیام می‌بندد؛ پس از ارسال نیز ادامه ارتباط را متوقف می‌کند.
   bot.hears(CANCEL_TEXT, async (ctx, next) => {
     if (isAdmin(ctx, env)) return next();
     const state = await env.DB.prepare(
@@ -298,9 +359,25 @@ export function registerSupportHandlers(bot, env) {
 
     const total = Number(state?.message_count || 0);
     const summary = total > 0
-      ? `${total} پیام شما برای مدیر ارسال شد.`
-      : "ارسال پیام لغو شد؛ پیامی برای مدیر ارسال نشد.";
+      ? `ارتباط لغو شد. ${total} پیام قبلی برای مدیریت ارسال شده است و قابل پس‌گرفتن نیست.`
+      : "درخواست ارتباط لغو شد؛ هیچ پیامی برای مدیریت ارسال نشد.";
     await ctx.reply(summary, { reply_markup: mainKeyboard() });
+  });
+
+  bot.hears(END_CHAT_TEXT, async (ctx, next) => {
+    if (isAdmin(ctx, env)) return next();
+    const state = await env.DB.prepare(
+      "SELECT active, message_count FROM support_user_states WHERE user_id = ?"
+    ).bind(ctx.from.id).first();
+    if (!state?.active || Number(state.message_count || 0) < 1) return next();
+
+    await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
+      .bind(ctx.from.id).run();
+
+    await ctx.reply(
+      `گفتگو با موفقیت پایان یافت. مجموع پیام‌های ارسال‌شده: ${Number(state.message_count)}`,
+      { reply_markup: mainKeyboard() }
+    );
   });
 
   bot.command("block", (ctx) => blockUser(ctx, env));
