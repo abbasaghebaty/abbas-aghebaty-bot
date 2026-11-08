@@ -102,6 +102,25 @@ async function startSupport(ctx, env) {
     return;
   }
 
+  const currentState = await env.DB.prepare(
+    "SELECT active, message_count FROM support_user_states WHERE user_id = ?"
+  ).bind(ctx.from.id).first();
+
+  if (currentState?.active) {
+    const keyboard = Number(currentState.message_count || 0) > 0
+      ? activeChatKeyboard()
+      : waitingKeyboard();
+    await ctx.reply("در حال حاضر یک گفتگوی فعال داری؛ پیام خودت رو همین‌جا بفرست.", {
+      reply_markup: keyboard,
+    });
+    return;
+  }
+
+  // وضعیت غیرفعال فقط برای این است که دکمه «لغو» در صفحه معرفی هم قابل استفاده باشد.
+  await env.DB.prepare(
+    "INSERT INTO support_user_states (user_id, active, message_count, created_at) VALUES (?, 0, 0, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET active = 0, message_count = 0, created_at = datetime('now')"
+  ).bind(ctx.from.id).run();
+
   const message =
     "از این بخش می‌تونی مستقیماً با مدیریت در ارتباط باشی.\n\n" +
     "اگر سؤال، پیشنهاد یا موضوعی برای مطرح‌کردن داری، روی «شروع گفتگو» بزن و پیام خودت رو ارسال کن.\n" +
@@ -352,7 +371,8 @@ export function registerSupportHandlers(bot, env) {
     const state = await env.DB.prepare(
       "SELECT active, message_count FROM support_user_states WHERE user_id = ?"
     ).bind(ctx.from.id).first();
-    if (!state?.active) return next();
+    // وجود رکورد غیرفعال یعنی کاربر هنوز در صفحه معرفی ارتباط با مدیریت است.
+    if (!state) return next();
 
     await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
       .bind(ctx.from.id).run();
