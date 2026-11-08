@@ -18,7 +18,29 @@ npx wrangler secret put BOT_TOKEN
 npx wrangler d1 execute abbas-aghebaty-bot --remote --file=migrations/0002_two_way_support.sql
 ```
 
-## ۳) انتشار و ثبت دوباره Webhook
+## ۳) اجرای Migration پیام‌های موقت
+
+این Migration پیام‌های کاربر را تا زمان انتخاب «اتمام گفتگو» در جدول موقت نگه می‌دارد. قبل از Deploy نسخه جدید، این SQL را روی D1 اجرا کن:
+
+```sql
+ALTER TABLE support_user_states
+ADD COLUMN admin_header_message_id INTEGER;
+
+CREATE TABLE IF NOT EXISTS support_pending_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  source_chat_id INTEGER NOT NULL,
+  source_message_id INTEGER NOT NULL,
+  admin_message_id INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(user_id, source_chat_id, source_message_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_pending_messages_user
+  ON support_pending_messages(user_id, id);
+```
+
+## ۴) انتشار و ثبت دوباره Webhook
 
 بعد از Merge شدن تغییرات و Deploy شدن Worker، یک‌بار آدرس زیر را باز کن:
 
