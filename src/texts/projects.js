@@ -36,7 +36,6 @@ export const PROJECTS_TEXT = `
 </blockquote>
 
 <a href="https://abbasaghebaty.github.io/lesson-dashboard/"><b>Study Planner</b></a>
-· <a href="https://t.me/StudyReplanner_bot"><b>ربات تلگرام</b></a>
 
 <blockquote expandable>
 سامانه‌ای برای برنامه‌ریزی و پایش امور درسی که تکالیف، امتحان‌ها و برنامه مطالعه را یکپارچه مدیریت می‌کند.
@@ -46,6 +45,14 @@ export const PROJECTS_TEXT = `
 
 
 <b>ربات‌ها</b>
+
+<a href="https://t.me/StudyReplanner_bot"><b>Study Planner</b></a>
+
+<blockquote expandable>
+سامانه‌ای برای برنامه‌ریزی و پایش امور درسی که تکالیف، امتحان‌ها و برنامه مطالعه را یکپارچه مدیریت می‌کند.
+با این ابزار می‌توان مشخص کرد چه مباحثی باید تا چه زمانی مطالعه شوند، چه تکالیفی باقی مانده و چه امتحان‌هایی پیش رو هستند.
+این پروژه از دو بخش تشکیل شده: داشبورد تحت وب برای مشاهده و مدیریت برنامه و ربات تلگرام برای دسترسی و پیگیری آسان‌تر.
+</blockquote>
 
 <a href="${LINKS.projects.yourClean}"><b>YourClean Bot</b></a>
 
