@@ -236,6 +236,13 @@ async function deliverPendingMessages(ctx, env, state) {
     ).bind(headerId, ctx.from.id).run();
   }
 
+  let targetAvailableReactions;
+  try {
+    targetAvailableReactions = (await ctx.api.getChat(ctx.from.id)).available_reactions;
+  } catch (error) {
+    console.warn("Could not load target chat reaction settings:", error);
+  }
+
   let replyToMessageId = headerId;
   for (const item of pending.results) {
     if (item.admin_message_id) {
@@ -252,7 +259,7 @@ async function deliverPendingMessages(ctx, env, state) {
           message_id: replyToMessageId,
           allow_sending_without_reply: true,
         },
-        reply_markup: createReactionKeyboard(),
+        reply_markup: createReactionKeyboard(null, targetAvailableReactions),
       }
     );
 
@@ -296,7 +303,6 @@ async function forwardAdminReply(ctx, env, mapped) {
       copied.message_id
     );
 
-    await ctx.reply("پاسخت برای کاربر ارسال شد.");
   } catch (error) {
     console.error("Support reply failed:", error);
     await ctx.reply("ارسال پاسخ ناموفق بود. ممکنه کاربر ربات رو مسدود کرده باشه.");
