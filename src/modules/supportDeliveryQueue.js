@@ -151,4 +151,56 @@ export function registerSupportDeliveryHandlers(bot, env) {
       await ctx.reply("پاسخ در صف ارسال ثبت نشد. لطفاً دوباره تلاش کن.");
     }
   });
+
+  // Mirror edits made by the administrator to the already-delivered user copy.
+  bot.on("edited_message", async (ctx, next) => {
+    const managerId = Number(env.ADMIN_ID);
+    const edited = ctx.editedMessage;
+
+    if (!ctx.from || !edited || !Number.isSafeInteger(managerId)
+      || Number(ctx.from.id) !== managerId) {
+      return next();
+    }
+
+    const mapped = await env.DB.prepare(
+      "SELECT user_id, peer_chat_id, peer_message_id FROM support_message_map WHERE chat_id = ? AND message_id = ?"
+    ).bind(ctx.chat.id, edited.message_id).first();
+
+    // Only mirror the administrator-side copy of an outgoing support reply.
+    if (!mapped || Number(mapped.peer_chat_id) !== Number(mapped.user_id)) {
+      return next();
+    }
+
+    try {
+      if (typeof edited.text === "string") {
+        await ctx.api.editMessageText(
+          Number(mapped.peer_chat_id),
+          Number(mapped.peer_message_id),
+          edited.text,
+          { entities: edited.entities || [] }
+        );
+        return;
+      }
+
+      if (typeof edited.caption === "string") {
+        await ctx.api.editMessageCaption(
+          Number(mapped.peer_chat_id),
+          Number(mapped.peer_message_id),
+          edited.caption,
+          { caption_entities: edited.caption_entities || [] }
+        );
+        return;
+      }
+
+      // Telegram currently reports text/caption edits here; other media changes
+      // are intentionally left untouched rather than risking a mismatched edit.
+    } catch (error) {
+      console.error("Could not mirror edited support reply:", {
+        admin_message_id: edited.message_id,
+        user_id: mapped.user_id,
+        error,
+      });
+    }
+  });
+
 }
