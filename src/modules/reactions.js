@@ -14,9 +14,24 @@ const REACTION_ROWS = [
   ["wow", "sad", "fire"],
 ];
 
-export function createReactionKeyboard(selected = null) {
+function availableReactionKeys(availableReactions) {
+  if (!Array.isArray(availableReactions)) return Object.keys(REACTIONS);
+  const allowed = new Set(
+    availableReactions
+      .filter((item) => item?.type === "emoji")
+      .map((item) => item.emoji)
+  );
+  return Object.keys(REACTIONS).filter((key) => allowed.has(REACTIONS[key]));
+}
+
+export function createReactionKeyboard(selected = null, availableReactions = null) {
+  const allowedKeys = new Set(availableReactionKeys(availableReactions));
+  const rows = REACTION_ROWS
+    .map((row) => row.filter((key) => allowedKeys.has(key)))
+    .filter((row) => row.length);
+
   return {
-    inline_keyboard: REACTION_ROWS.map((row) => row.map((key) => ({
+    inline_keyboard: rows.map((row) => row.map((key) => ({
       text: REACTIONS[key],
       callback_data: "support:react:" + key,
       ...(selected === key ? { style: "primary" } : {}),
@@ -43,8 +58,32 @@ export function registerReactionHandlers(bot, env) {
       return;
     }
 
+    let availableReactions;
+    try {
+      const peerChat = await ctx.api.getChat(mapped.peer_chat_id);
+      availableReactions = peerChat.available_reactions;
+    } catch (error) {
+      console.error("Could not inspect target chat reactions:", error);
+    }
+
     const selected = ctx.match[1];
     const emoji = REACTIONS[selected];
+    if (Array.isArray(availableReactions)
+      && !availableReactions.some((item) => item?.type === "emoji" && item.emoji === emoji)) {
+      try {
+        await ctx.editMessageReplyMarkup({
+          reply_markup: createReactionKeyboard(null, availableReactions),
+        });
+      } catch (error) {
+        console.warn("Could not refresh available reaction buttons:", error);
+      }
+      await ctx.answerCallbackQuery({
+        text: "این واکنش در گفت‌وگوی این کاربر مجاز نیست؛ فهرست واکنش‌ها به‌روز شد.",
+        show_alert: true,
+      });
+      return;
+    }
+
     try {
       await ctx.api.setMessageReaction(
         mapped.peer_chat_id,
@@ -52,17 +91,30 @@ export function registerReactionHandlers(bot, env) {
         [{ type: "emoji", emoji }]
       );
     } catch (error) {
-      console.error("Support reaction API failed:", error);
+      console.error("Support reaction API failed:", {
+        description: error?.description || error?.message,
+        error_code: error?.error_code,
+        parameters: error?.parameters,
+      });
+      try {
+        const peerChat = await ctx.api.getChat(mapped.peer_chat_id);
+        await ctx.editMessageReplyMarkup({
+          reply_markup: createReactionKeyboard(null, peerChat.available_reactions),
+        });
+      } catch (refreshError) {
+        console.warn("Could not refresh reaction buttons after API error:", refreshError);
+      }
       await ctx.answerCallbackQuery({
-        text: "ثبت این واکنش در گفت‌وگوی کاربر ممکن نیست.",
+        text: "تلگرام این واکنش را برای پیام مقصد نپذیرفت؛ فهرست واکنش‌ها بررسی شد.",
+        show_alert: true,
       });
       return;
     }
 
-    // Updating the button appearance is independent from applying the reaction.
-    // A markup-edit failure must not report that the reaction itself failed.
     try {
-      await ctx.editMessageReplyMarkup({ reply_markup: createReactionKeyboard(selected) });
+      await ctx.editMessageReplyMarkup({
+        reply_markup: createReactionKeyboard(selected, availableReactions),
+      });
     } catch (error) {
       console.warn("Support reaction button update failed:", error);
     }
