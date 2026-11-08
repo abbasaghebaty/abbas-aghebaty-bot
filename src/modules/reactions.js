@@ -1,17 +1,13 @@
-import { InlineKeyboard } from "grammy";
-
 const REACTIONS = {
   like: "👍",
   love: "❤️",
-  laugh: "😂",
-  wow: "😮",
-  sad: "😢",
-  fire: "🔥",
+  dislike: "👎",
+  moai: "🗿",
 };
 
 const REACTION_ROWS = [
-  ["like", "love", "laugh"],
-  ["wow", "sad", "fire"],
+  ["like", "love"],
+  ["dislike", "moai"],
 ];
 
 function availableReactionKeys(availableReactions) {
@@ -28,19 +24,25 @@ export function createReactionKeyboard(selected = null, availableReactions = nul
   const allowedKeys = new Set(availableReactionKeys(availableReactions));
   const rows = REACTION_ROWS
     .map((row) => row.filter((key) => allowedKeys.has(key)))
-    .filter((row) => row.length);
-
-  return {
-    inline_keyboard: rows.map((row) => row.map((key) => ({
+    .filter((row) => row.length)
+    .map((row) => row.map((key) => ({
       text: REACTIONS[key],
       callback_data: "support:react:" + key,
       ...(selected === key ? { style: "primary" } : {}),
-    }))),
-  };
+    })));
+
+  // Clearing a reaction does not depend on the target chat's allowed emoji list.
+  rows.push([{
+    text: "حذف ری‌اکشن",
+    callback_data: "support:react:clear",
+    ...(selected === null ? { style: "primary" } : {}),
+  }]);
+
+  return { inline_keyboard: rows };
 }
 
 export function registerReactionHandlers(bot, env) {
-  bot.callbackQuery(/^support:react:(like|love|laugh|wow|sad|fire)$/, async (ctx) => {
+  bot.callbackQuery(/^support:react:(like|love|dislike|moai|clear)$/, async (ctx) => {
     const message = ctx.callbackQuery.message;
     const managerId = Number(env.ADMIN_ID);
     if (!message || !Number.isSafeInteger(managerId) || managerId <= 0
@@ -67,8 +69,10 @@ export function registerReactionHandlers(bot, env) {
     }
 
     const selected = ctx.match[1];
-    const emoji = REACTIONS[selected];
-    if (Array.isArray(availableReactions)
+    const clearing = selected === "clear";
+    const emoji = clearing ? null : REACTIONS[selected];
+
+    if (!clearing && Array.isArray(availableReactions)
       && !availableReactions.some((item) => item?.type === "emoji" && item.emoji === emoji)) {
       try {
         await ctx.editMessageReplyMarkup({
@@ -88,7 +92,7 @@ export function registerReactionHandlers(bot, env) {
       await ctx.api.setMessageReaction(
         mapped.peer_chat_id,
         mapped.peer_message_id,
-        [{ type: "emoji", emoji }]
+        clearing ? [] : [{ type: "emoji", emoji }]
       );
     } catch (error) {
       console.error("Support reaction API failed:", {
@@ -105,7 +109,7 @@ export function registerReactionHandlers(bot, env) {
         console.warn("Could not refresh reaction buttons after API error:", refreshError);
       }
       await ctx.answerCallbackQuery({
-        text: "تلگرام این واکنش را برای پیام مقصد نپذیرفت؛ فهرست واکنش‌ها بررسی شد.",
+        text: "تلگرام این عملیات را برای پیام مقصد نپذیرفت.",
         show_alert: true,
       });
       return;
@@ -113,11 +117,13 @@ export function registerReactionHandlers(bot, env) {
 
     try {
       await ctx.editMessageReplyMarkup({
-        reply_markup: createReactionKeyboard(selected, availableReactions),
+        reply_markup: createReactionKeyboard(clearing ? null : selected, availableReactions),
       });
     } catch (error) {
       console.warn("Support reaction button update failed:", error);
     }
-    await ctx.answerCallbackQuery({ text: "واکنش ثبت شد." });
+    await ctx.answerCallbackQuery({
+      text: clearing ? "ری‌اکشن حذف شد." : "واکنش ثبت شد.",
+    });
   });
 }
