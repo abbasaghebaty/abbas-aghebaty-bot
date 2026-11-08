@@ -431,7 +431,7 @@ export function registerSupportHandlers(bot, env) {
       "<b>کاربر</b>\n" + profile + "\n\n" +
       "<b>تعداد پیام‌ها:</b> <code>" + Number(notification.message_count) + "</code>\n" +
       "<b>وضعیت:</b> <i>خوانده شد</i>",
-      { parse_mode: "HTML" }
+      { parse_mode: "HTML", reply_markup: new InlineKeyboard() }
     );
     await ctx.answerCallbackQuery({ text: "پیام‌ها خوانده‌شده ثبت شدند." });
   });
