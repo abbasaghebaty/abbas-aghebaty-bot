@@ -1,6 +1,7 @@
 import { Bot } from "grammy";
 import { upsertUser } from "../database/users.js";
 import { registerSupportHandlers } from "../modules/support.js";
+import { registerSupportDeliveryHandlers } from "../modules/supportDeliveryQueue.js";
 import { registerStartHandler } from "../handlers/start.js";
 import { registerMainMenuHandlers } from "../handlers/mainMenu.js";
 import { registerSocialHandlers } from "../handlers/socials.js";
@@ -22,7 +23,9 @@ export function createBot(env) {
     await next();
   });
 
-  // Register support commands and relay middleware before the general handlers.
+  // Intercept mapped administrator replies before the legacy support relay.
+  // Successful replies stay silent; transient failures enter the durable D1 queue.
+  registerSupportDeliveryHandlers(bot, env);
   registerSupportHandlers(bot, env);
   registerStartHandler(bot);
   registerMainMenuHandlers(bot);
