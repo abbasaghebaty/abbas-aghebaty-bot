@@ -103,11 +103,14 @@ async function processOne(api, env, item) {
   }
 }
 
-export async function processSupportDeliveryQueue(api, env, limit = 10) {
+export async function processSupportDeliveryQueue(api, env, limit = 10, specificId = null) {
   const now = Math.floor(Date.now() / 1000);
-  const due = await env.DB.prepare(
-    "SELECT id, admin_chat_id, admin_message_id, user_id, target_chat_id, reply_to_message_id, attempts, notified_at FROM support_delivery_queue WHERE (status = 'pending' AND next_attempt_at <= ?) OR (status = 'processing' AND locked_until <= ?) ORDER BY id ASC LIMIT ?"
-  ).bind(now, now, Math.max(1, Math.min(50, Number(limit) || 10))).all();
+  const sql = specificId
+    ? "SELECT id, admin_chat_id, admin_message_id, user_id, target_chat_id, reply_to_message_id, attempts, notified_at FROM support_delivery_queue WHERE id = ? AND ((status = 'pending' AND next_attempt_at <= ?) OR (status = 'processing' AND locked_until <= ?)) LIMIT 1"
+    : "SELECT id, admin_chat_id, admin_message_id, user_id, target_chat_id, reply_to_message_id, attempts, notified_at FROM support_delivery_queue WHERE (status = 'pending' AND next_attempt_at <= ?) OR (status = 'processing' AND locked_until <= ?) ORDER BY id ASC LIMIT ?";
+  const due = specificId
+    ? await env.DB.prepare(sql).bind(Number(specificId), now, now).all()
+    : await env.DB.prepare(sql).bind(now, now, Math.max(1, Math.min(50, Number(limit) || 10))).all();
 
   for (const item of due.results || []) {
     await processOne(api, env, item);
@@ -139,7 +142,10 @@ export function registerSupportDeliveryHandlers(bot, env) {
         Number(mapped.peer_chat_id), Number(mapped.peer_message_id), Math.floor(Date.now() / 1000)
       ).run();
 
-      await processSupportDeliveryQueue(ctx.api, env, 1);
+      const queued = await env.DB.prepare(
+        "SELECT id FROM support_delivery_queue WHERE admin_chat_id = ? AND admin_message_id = ?"
+      ).bind(Number(ctx.chat.id), Number(ctx.message.message_id)).first();
+      if (queued) await processSupportDeliveryQueue(ctx.api, env, 1, queued.id);
     } catch (error) {
       console.error("Could not enqueue support reply:", error);
       await ctx.reply("پاسخ در صف ارسال ثبت نشد. لطفاً دوباره تلاش کن.");
