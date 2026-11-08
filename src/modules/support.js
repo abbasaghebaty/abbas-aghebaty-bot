@@ -223,14 +223,23 @@ async function deliverPendingMessages(ctx, env, state) {
   if (!headerId) {
     const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ") || "کاربر";
     const profile = '<a href="tg://user?id=' + ctx.from.id + '">' + escapeHtml(name) + "</a>";
+    const headerText =
+      "✦ <b>پیام جدید دریافت شد</b>\n\n" +
+      "<b>کاربر</b>\n" + profile + "\n\n" +
+      "<b>پیام‌های خوانده‌نشده:</b> <code>" + pending.results.length + "</code>\n\n" +
+      "<i>برای مشاهده پیام‌ها، دکمه زیر را انتخاب کن.</i>";
     const header = await ctx.api.sendMessage(
       managerId,
-      "پیام‌های جدید از " + profile + "\n" + "تعداد پیام‌ها: " + pending.results.length,
+      headerText,
       {
         parse_mode: "HTML",
+        reply_markup: new InlineKeyboard().text("مشاهده پیام‌ها", "support:view"),
       }
     );
     headerId = header.message_id;
+    await env.DB.prepare(
+      "INSERT OR IGNORE INTO support_notifications (admin_chat_id, header_message_id, user_id, message_count) VALUES (?, ?, ?, ?)"
+    ).bind(managerId, headerId, ctx.from.id, pending.results.length).run();
     await env.DB.prepare(
       "UPDATE support_user_states SET admin_header_message_id = ? WHERE user_id = ? AND active = 2"
     ).bind(headerId, ctx.from.id).run();
@@ -383,6 +392,48 @@ export function registerSupportHandlers(bot, env) {
   bot.callbackQuery("support:start", async (ctx) => {
     await ctx.answerCallbackQuery();
     await startSupport(ctx, env);
+  });
+
+  bot.callbackQuery("support:view", async (ctx) => {
+    if (!isAdmin(ctx, env)) {
+      await ctx.answerCallbackQuery({ text: "دسترسی ندارید." });
+      return;
+    }
+
+    const message = ctx.callbackQuery.message;
+    if (!message) {
+      await ctx.answerCallbackQuery({ text: "اعلان پیدا نشد." });
+      return;
+    }
+
+    const notification = await env.DB.prepare(
+      "SELECT n.user_id, n.message_count, n.read_at, u.first_name FROM support_notifications n LEFT JOIN users u ON u.telegram_id = n.user_id WHERE n.admin_chat_id = ? AND n.header_message_id = ?"
+    ).bind(ctx.chat.id, message.message_id).first();
+
+    if (!notification) {
+      await ctx.answerCallbackQuery({ text: "اعلان پیدا نشد." });
+      return;
+    }
+
+    if (notification.read_at) {
+      await ctx.answerCallbackQuery({ text: "این اعلان قبلاً مشاهده شده است." });
+      return;
+    }
+
+    await env.DB.prepare(
+      "UPDATE support_notifications SET read_at = datetime('now') WHERE admin_chat_id = ? AND header_message_id = ? AND read_at IS NULL"
+    ).bind(ctx.chat.id, message.message_id).run();
+
+    const name = notification.first_name || "کاربر";
+    const profile = '<a href="tg://user?id=' + Number(notification.user_id) + '">' + escapeHtml(name) + "</a>";
+    await ctx.editMessageText(
+      "✦ <b>پیام‌های کاربر مشاهده شد</b>\n\n" +
+      "<b>کاربر</b>\n" + profile + "\n\n" +
+      "<b>تعداد پیام‌ها:</b> <code>" + Number(notification.message_count) + "</code>\n" +
+      "<b>وضعیت:</b> <i>خوانده شد</i>",
+      { parse_mode: "HTML" }
+    );
+    await ctx.answerCallbackQuery({ text: "پیام‌ها خوانده‌شده ثبت شدند." });
   });
 
   bot.callbackQuery(/^support:unblock:(\d+)$/, async (ctx) => {
