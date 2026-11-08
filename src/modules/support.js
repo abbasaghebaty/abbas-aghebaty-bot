@@ -408,7 +408,6 @@ export function registerSupportHandlers(bot, env) {
       return;
     }
     if (notification.read_at) {
-      try { await ctx.api.deleteMessage(ctx.chat.id, message.message_id); } catch {}
       await ctx.answerCallbackQuery({ text: "این اعلان قبلاً مشاهده شده است." });
       return;
     }
@@ -419,7 +418,6 @@ export function registerSupportHandlers(bot, env) {
       await env.DB.prepare(
         "DELETE FROM support_pending_messages WHERE user_id = ?"
       ).bind(notification.user_id).run();
-      await ctx.api.deleteMessage(ctx.chat.id, message.message_id);
       await ctx.answerCallbackQuery({ text: "این کاربر بلاک شده و پیام‌هایش نمایش داده نمی‌شوند." });
       return;
     }
@@ -434,11 +432,9 @@ export function registerSupportHandlers(bot, env) {
       await env.DB.prepare(
         "UPDATE support_notifications SET read_at = datetime('now') WHERE admin_chat_id = ? AND header_message_id = ?"
       ).bind(ctx.chat.id, message.message_id).run();
-      await ctx.api.deleteMessage(ctx.chat.id, message.message_id);
       return;
     }
 
-    let rootMessageId = pending.results.find((item) => item.admin_message_id)?.admin_message_id || null;
     let targetAvailableReactions;
     try {
       targetAvailableReactions = (await ctx.api.getChat(Number(notification.user_id))).available_reactions;
@@ -448,20 +444,15 @@ export function registerSupportHandlers(bot, env) {
 
     // Every copied message is attached to the first copied message, not chained to the previous one.
     for (const item of pending.results) {
-      if (item.admin_message_id) {
-        if (!rootMessageId) rootMessageId = Number(item.admin_message_id);
-        continue;
-      }
+      if (item.admin_message_id) continue;
 
       const options = {
         reply_markup: createReactionKeyboard(null, targetAvailableReactions),
-      };
-      if (rootMessageId) {
-        options.reply_parameters = {
-          message_id: Number(rootMessageId),
+        reply_parameters: {
+          message_id: Number(message.message_id),
           allow_sending_without_reply: true,
-        };
-      }
+        },
+      };
 
       const copied = await ctx.api.copyMessage(
         ctx.chat.id,
@@ -469,8 +460,6 @@ export function registerSupportHandlers(bot, env) {
         Number(item.source_message_id),
         options
       );
-
-      if (!rootMessageId) rootMessageId = copied.message_id;
 
       await env.DB.prepare(
         "UPDATE support_pending_messages SET admin_message_id = ? WHERE id = ? AND user_id = ?"
@@ -494,8 +483,6 @@ export function registerSupportHandlers(bot, env) {
       env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(notification.user_id),
       env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(notification.user_id),
     ]);
-    await ctx.api.deleteMessage(ctx.chat.id, message.message_id);
-
   });
 
   bot.callbackQuery(/^support:unblock:(\d+)$/, async (ctx) => {
@@ -562,10 +549,6 @@ export function registerSupportHandlers(bot, env) {
       "UPDATE support_user_states SET active = 2 WHERE user_id = ?"
     ).bind(ctx.from.id).run();
 
-    await ctx.reply("گفتگو ثبت می‌شه؛ پیام‌ها تا زمان انتخاب «مشاهده پیام‌ها» فقط ذخیره می‌مونن.", {
-      reply_markup: finalizingKeyboard(),
-    });
-
     try {
       const delivered = await deliverPendingMessages(ctx, env, state);
       if (!delivered) return;
@@ -577,8 +560,8 @@ export function registerSupportHandlers(bot, env) {
 
       await ctx.reply(
         total > 0
-          ? `گفتگو پایان یافت و ${total} پیام تا زمان مشاهده مدیریت ذخیره شد.`
-          : "گفتگو بدون ارسال پیام پایان یافت.",
+          ? `${total} پیام برای مدیریت ارسال شد.`
+          : "پیامی برای مدیریت ارسال نشد.",
         { reply_markup: mainKeyboard() }
       );
     } catch (error) {
