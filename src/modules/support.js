@@ -149,6 +149,16 @@ async function beginSupport(ctx, env) {
     return;
   }
 
+  const unreadBatch = await env.DB.prepare(
+    "SELECT id FROM support_notifications WHERE user_id = ? AND read_at IS NULL LIMIT 1"
+  ).bind(ctx.from.id).first();
+  if (unreadBatch) {
+    await ctx.reply("پیام‌های قبلی تو هنوز در انتظار مشاهده مدیریت هستند. بعد از بررسی آن‌ها می‌تونی گفتگوی جدیدی شروع کنی.", {
+      reply_markup: mainKeyboard(),
+    });
+    return;
+  }
+
   await env.DB.prepare(
     "DELETE FROM support_pending_messages WHERE user_id = ?"
   ).bind(ctx.from.id).run();
@@ -214,78 +224,36 @@ async function deliverPendingMessages(ctx, env, state) {
   }
 
   const pending = await env.DB.prepare(
-    "SELECT id, source_chat_id, source_message_id, admin_message_id FROM support_pending_messages WHERE user_id = ? ORDER BY id ASC"
-  ).bind(ctx.from.id).all();
+    "SELECT COUNT(*) AS total FROM support_pending_messages WHERE user_id = ?"
+  ).bind(ctx.from.id).first();
+  const total = Number(pending?.total || 0);
+  if (!total) return true;
 
-  if (!pending.results?.length) return true;
+  if (state.admin_header_message_id) return true;
 
-  let headerId = state.admin_header_message_id;
-  if (!headerId) {
-    const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ") || "کاربر";
-    const profile = '<a href="tg://user?id=' + ctx.from.id + '">' + escapeHtml(name) + "</a>";
-    const headerText =
-      "✦ <b>پیام جدید دریافت شد</b>\n\n" +
-      "<b>کاربر</b>\n" + profile + "\n\n" +
-      "<b>پیام‌های خوانده‌نشده:</b> <code>" + pending.results.length + "</code>\n\n" +
-      "<i>برای مشاهده پیام‌ها، دکمه زیر را انتخاب کن.</i>";
-    const header = await ctx.api.sendMessage(
-      managerId,
-      headerText,
-      {
-        parse_mode: "HTML",
-        reply_markup: new InlineKeyboard().text("مشاهده پیام‌ها", "support:view"),
-      }
-    );
-    headerId = header.message_id;
-    await env.DB.prepare(
-      "INSERT OR IGNORE INTO support_notifications (admin_chat_id, header_message_id, user_id, message_count) VALUES (?, ?, ?, ?)"
-    ).bind(managerId, headerId, ctx.from.id, pending.results.length).run();
-    await env.DB.prepare(
-      "UPDATE support_user_states SET admin_header_message_id = ? WHERE user_id = ? AND active = 2"
-    ).bind(headerId, ctx.from.id).run();
-  }
+  const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ") || "کاربر";
+  const profile = '<a href="tg://user?id=' + ctx.from.id + '">' + escapeHtml(name) + "</a>";
+  const headerText =
+    "✦ <b>" + total + " پیام خوانده‌نشده از کاربر زیر</b>\n\n" +
+    "<b>کاربر</b>\n" + profile + "\n\n" +
+    "<i>برای دریافت پیام‌ها، مشاهده پیام‌ها را انتخاب کن.</i>";
 
-  let targetAvailableReactions;
-  try {
-    targetAvailableReactions = (await ctx.api.getChat(ctx.from.id)).available_reactions;
-  } catch (error) {
-    console.warn("Could not load target chat reaction settings:", error);
-  }
-
-  let replyToMessageId = headerId;
-  for (const item of pending.results) {
-    if (item.admin_message_id) {
-      replyToMessageId = Number(item.admin_message_id);
-      continue;
+  const header = await ctx.api.sendMessage(
+    managerId,
+    headerText,
+    {
+      parse_mode: "HTML",
+      reply_markup: new InlineKeyboard().text("مشاهده پیام‌ها", "support:view"),
     }
+  );
 
-    const copied = await ctx.api.copyMessage(
-      managerId,
-      Number(item.source_chat_id),
-      Number(item.source_message_id),
-      {
-        reply_parameters: {
-          message_id: replyToMessageId,
-          allow_sending_without_reply: true,
-        },
-        reply_markup: createReactionKeyboard(null, targetAvailableReactions),
-      }
-    );
+  await env.DB.prepare(
+    "INSERT INTO support_notifications (admin_chat_id, header_message_id, user_id, message_count) VALUES (?, ?, ?, ?)"
+  ).bind(managerId, header.message_id, ctx.from.id, total).run();
 
-    await env.DB.prepare(
-      "UPDATE support_pending_messages SET admin_message_id = ? WHERE id = ? AND user_id = ?"
-    ).bind(copied.message_id, item.id, ctx.from.id).run();
-
-    await saveMessagePair(
-      env.DB,
-      ctx.from.id,
-      managerId,
-      copied.message_id,
-      Number(item.source_chat_id),
-      Number(item.source_message_id)
-    );
-    replyToMessageId = copied.message_id;
-  }
+  await env.DB.prepare(
+    "UPDATE support_user_states SET admin_header_message_id = ? WHERE user_id = ? AND active = 2"
+  ).bind(header.message_id, ctx.from.id).run();
 
   return true;
 }
@@ -325,6 +293,13 @@ async function blockUser(ctx, env) {
   if (replied) {
     const mapped = await getMappedUser(env.DB, ctx.chat.id, replied.message_id);
     if (mapped) userId = Number(mapped.user_id);
+
+    if (!userId) {
+      const notification = await env.DB.prepare(
+        "SELECT user_id FROM support_notifications WHERE admin_chat_id = ? AND header_message_id = ?"
+      ).bind(ctx.chat.id, replied.message_id).first();
+      if (notification) userId = Number(notification.user_id);
+    }
   }
 
   const arg = (ctx.message.text || "").trim().split(/\s+/)[1];
@@ -351,6 +326,7 @@ async function blockUser(ctx, env) {
   await env.DB.batch([
     env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(userId),
     env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(userId),
+    env.DB.prepare("UPDATE support_notifications SET read_at = COALESCE(read_at, datetime('now')) WHERE user_id = ? AND read_at IS NULL").bind(userId),
   ]);
   await ctx.reply("کاربر با آیدی " + userId + " بلاک شد.");
 }
@@ -407,33 +383,101 @@ export function registerSupportHandlers(bot, env) {
     }
 
     const notification = await env.DB.prepare(
-      "SELECT n.user_id, n.message_count, n.read_at, u.first_name FROM support_notifications n LEFT JOIN users u ON u.telegram_id = n.user_id WHERE n.admin_chat_id = ? AND n.header_message_id = ?"
+      "SELECT user_id, message_count, read_at FROM support_notifications WHERE admin_chat_id = ? AND header_message_id = ?"
     ).bind(ctx.chat.id, message.message_id).first();
 
     if (!notification) {
-      await ctx.answerCallbackQuery({ text: "اعلان پیدا نشد." });
+      await ctx.answerCallbackQuery({ text: "اعلان پیدا نشد یا قبلاً پردازش شده است." });
       return;
     }
-
     if (notification.read_at) {
       await ctx.answerCallbackQuery({ text: "این اعلان قبلاً مشاهده شده است." });
       return;
     }
+    if (await isBlocked(env.DB, Number(notification.user_id))) {
+      await env.DB.prepare(
+        "UPDATE support_notifications SET read_at = datetime('now') WHERE admin_chat_id = ? AND header_message_id = ?"
+      ).bind(ctx.chat.id, message.message_id).run();
+      await env.DB.prepare(
+        "DELETE FROM support_pending_messages WHERE user_id = ?"
+      ).bind(notification.user_id).run();
+      await ctx.api.deleteMessage(ctx.chat.id, message.message_id);
+      await ctx.answerCallbackQuery({ text: "این کاربر بلاک شده و پیام‌هایش نمایش داده نمی‌شوند." });
+      return;
+    }
 
-    await env.DB.prepare(
-      "UPDATE support_notifications SET read_at = datetime('now') WHERE admin_chat_id = ? AND header_message_id = ? AND read_at IS NULL"
-    ).bind(ctx.chat.id, message.message_id).run();
+    await ctx.answerCallbackQuery({ text: "در حال دریافت پیام‌ها..." });
 
-    const name = notification.first_name || "کاربر";
-    const profile = '<a href="tg://user?id=' + Number(notification.user_id) + '">' + escapeHtml(name) + "</a>";
-    await ctx.editMessageText(
-      "✦ <b>پیام‌های کاربر مشاهده شد</b>\n\n" +
-      "<b>کاربر</b>\n" + profile + "\n\n" +
-      "<b>تعداد پیام‌ها:</b> <code>" + Number(notification.message_count) + "</code>\n" +
-      "<b>وضعیت:</b> <i>خوانده شد</i>",
-      { parse_mode: "HTML", reply_markup: new InlineKeyboard() }
-    );
-    await ctx.answerCallbackQuery({ text: "پیام‌ها خوانده‌شده ثبت شدند." });
+    const pending = await env.DB.prepare(
+      "SELECT id, source_chat_id, source_message_id, admin_message_id FROM support_pending_messages WHERE user_id = ? ORDER BY id ASC"
+    ).bind(notification.user_id).all();
+
+    if (!pending.results?.length) {
+      await env.DB.prepare(
+        "UPDATE support_notifications SET read_at = datetime('now') WHERE admin_chat_id = ? AND header_message_id = ?"
+      ).bind(ctx.chat.id, message.message_id).run();
+      await ctx.api.deleteMessage(ctx.chat.id, message.message_id);
+      return;
+    }
+
+    let rootMessageId = pending.results.find((item) => item.admin_message_id)?.admin_message_id || null;
+    let targetAvailableReactions;
+    try {
+      targetAvailableReactions = (await ctx.api.getChat(Number(notification.user_id))).available_reactions;
+    } catch (error) {
+      console.warn("Could not load target chat reaction settings:", error);
+    }
+
+    // Every copied message is attached to the first copied message, not chained to the previous one.
+    for (const item of pending.results) {
+      if (item.admin_message_id) {
+        if (!rootMessageId) rootMessageId = Number(item.admin_message_id);
+        continue;
+      }
+
+      const options = {
+        reply_markup: createReactionKeyboard(null, targetAvailableReactions),
+      };
+      if (rootMessageId) {
+        options.reply_parameters = {
+          message_id: Number(rootMessageId),
+          allow_sending_without_reply: true,
+        };
+      }
+
+      const copied = await ctx.api.copyMessage(
+        ctx.chat.id,
+        Number(item.source_chat_id),
+        Number(item.source_message_id),
+        options
+      );
+
+      if (!rootMessageId) rootMessageId = copied.message_id;
+
+      await env.DB.prepare(
+        "UPDATE support_pending_messages SET admin_message_id = ? WHERE id = ? AND user_id = ?"
+      ).bind(copied.message_id, item.id, notification.user_id).run();
+
+      await saveMessagePair(
+        env.DB,
+        Number(notification.user_id),
+        ctx.chat.id,
+        copied.message_id,
+        Number(item.source_chat_id),
+        Number(item.source_message_id)
+      );
+    }
+
+    // Remove the inbox card only after all messages have been delivered successfully.
+    await ctx.api.deleteMessage(ctx.chat.id, message.message_id);
+    await env.DB.batch([
+      env.DB.prepare(
+        "UPDATE support_notifications SET read_at = datetime('now') WHERE admin_chat_id = ? AND header_message_id = ? AND read_at IS NULL"
+      ).bind(ctx.chat.id, message.message_id),
+      env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(notification.user_id),
+      env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(notification.user_id),
+    ]);
+    await ctx.answerCallbackQuery({ text: "پیام‌ها دریافت و به‌عنوان مشاهده‌شده ثبت شدند." });
   });
 
   bot.callbackQuery(/^support:unblock:(\d+)$/, async (ctx) => {
