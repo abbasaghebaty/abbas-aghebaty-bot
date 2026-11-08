@@ -29,6 +29,13 @@ function activeChatKeyboard() {
   ]]).resized().persistent();
 }
 
+// هنگام تحویل نهایی، لغو غیرفعال می‌شود تا ارسال نیمه‌کاره قابل تکرار باشد.
+function finalizingKeyboard() {
+  return Keyboard.from([[{ text: END_CHAT_TEXT, style: "success" }]])
+    .resized()
+    .persistent();
+}
+
 function adminId(env) {
   const value = Number(env.ADMIN_ID);
   return Number.isSafeInteger(value) && value > 0 ? value : null;
@@ -107,9 +114,11 @@ async function startSupport(ctx, env) {
   ).bind(ctx.from.id).first();
 
   if (currentState?.active) {
-    const keyboard = Number(currentState.message_count || 0) > 0
-      ? activeChatKeyboard()
-      : waitingKeyboard();
+    const keyboard = Number(currentState.active) === 2
+      ? finalizingKeyboard()
+      : Number(currentState.message_count || 0) > 0
+        ? activeChatKeyboard()
+        : waitingKeyboard();
     await ctx.reply("در حال حاضر یک گفتگوی فعال داری؛ پیام خودت رو همین‌جا بفرست.", {
       reply_markup: keyboard,
     });
@@ -141,7 +150,11 @@ async function beginSupport(ctx, env) {
   }
 
   await env.DB.prepare(
-    "INSERT INTO support_user_states (user_id, active, message_count, created_at) VALUES (?, 1, 0, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET active = 1, message_count = 0, created_at = datetime('now')"
+    "DELETE FROM support_pending_messages WHERE user_id = ?"
+  ).bind(ctx.from.id).run();
+
+  await env.DB.prepare(
+    "INSERT INTO support_user_states (user_id, active, message_count, admin_header_message_id, created_at) VALUES (?, 1, 0, NULL, datetime('now')) ON CONFLICT(user_id) DO UPDATE SET active = 1, message_count = 0, admin_header_message_id = NULL, created_at = datetime('now')"
   ).bind(ctx.from.id).run();
 
   await ctx.reply(
@@ -150,18 +163,14 @@ async function beginSupport(ctx, env) {
   );
 }
 
+// پیام‌ها تا زمان «اتمام گفتگو» فقط در D1 صف می‌شوند و به مدیر ارسال نمی‌شوند.
 async function forwardUserMessage(ctx, env) {
-  const managerId = adminId(env);
-  if (!managerId) {
-    await ctx.reply("تنظیمات مدیر ربات کامل نیست. لطفاً بعداً دوباره تلاش کن.");
-    console.error("ADMIN_ID is missing or invalid.");
-    return;
-  }
-
   if (await isBlocked(env.DB, ctx.from.id)) {
     await ctx.reply(SUPPORT_BLOCKED);
-    await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
-      .bind(ctx.from.id).run();
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(ctx.from.id),
+      env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(ctx.from.id),
+    ]);
     return;
   }
 
@@ -170,71 +179,99 @@ async function forwardUserMessage(ctx, env) {
     return;
   }
 
-  const previousState = await env.DB.prepare(
-    "SELECT message_count FROM support_user_states WHERE user_id = ? AND active = 1"
+  const state = await env.DB.prepare(
+    "SELECT active, message_count FROM support_user_states WHERE user_id = ?"
   ).bind(ctx.from.id).first();
 
-  const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ") || "کاربر";
-  const profile = '<a href="tg://user?id=' + ctx.from.id + '">' + escapeHtml(name) + "</a>";
+  if (Number(state?.active) !== 1) return;
 
   try {
-    let copied;
-    let adminMessageId;
-    if (typeof ctx.message.text === "string") {
-      copied = await ctx.api.sendMessage(managerId, profile + "\n" + escapeHtml(ctx.message.text), {
-        parse_mode: "HTML",
-        link_preview_options: { is_disabled: true },
-        reply_markup: createReactionKeyboard(),
-      });
-      adminMessageId = copied.message_id;
-    } else {
-      const caption = profile + (ctx.message.caption ? "\n" + escapeHtml(ctx.message.caption) : "");
-      try {
-        copied = await ctx.api.copyMessage(managerId, ctx.chat.id, ctx.message.message_id, {
-          caption,
-          parse_mode: "HTML",
-          reply_markup: createReactionKeyboard(),
-        });
-        adminMessageId = copied.message_id;
-      } catch (copyError) {
-        // Some message types (such as stickers) do not support captions.
-        // Keep them deliverable; attach the reaction controls to the sender header.
-        console.warn("Copy with combined caption failed; using separate header:", copyError);
-        const header = await ctx.api.sendMessage(managerId, profile, {
-          parse_mode: "HTML",
-          reply_markup: createReactionKeyboard(),
-        });
-        adminMessageId = header.message_id;
-        copied = await ctx.api.copyMessage(managerId, ctx.chat.id, ctx.message.message_id, {
-          reply_parameters: { message_id: header.message_id, allow_sending_without_reply: true },
-        });
-      }
-    }
-
-    await saveMessagePair(
-      env.DB,
-      ctx.from.id,
-      managerId,
-      adminMessageId || copied.message_id,
-      ctx.chat.id,
-      ctx.message.message_id
-    );
+    await env.DB.prepare(
+      "INSERT INTO support_pending_messages (user_id, source_chat_id, source_message_id) VALUES (?, ?, ?)"
+    ).bind(ctx.from.id, ctx.chat.id, ctx.message.message_id).run();
 
     await env.DB.prepare(
       "UPDATE support_user_states SET message_count = message_count + 1 WHERE user_id = ? AND active = 1"
     ).bind(ctx.from.id).run();
 
-    // پس از تحویل اولین پیام، کیبورد به حالت گفتگوی فعال تغییر می‌کند.
-    if (Number(previousState?.message_count || 0) === 0) {
-      await ctx.reply("پیامت برای مدیریت ارسال شد. می‌تونی پیام‌های بعدی رو هم بفرستی.", {
+    if (Number(state.message_count || 0) === 0) {
+      await ctx.reply("پیامت به‌صورت موقت ذخیره شد. وقتی «اتمام گفتگو» رو بزنی، همه پیام‌ها برای مدیریت ارسال می‌شن.", {
         reply_markup: activeChatKeyboard(),
       });
     }
-
   } catch (error) {
-    console.error("Support forward failed:", error);
-    await ctx.reply("ارسال پیام انجام نشد. لطفاً دوباره تلاش کن.");
+    console.error("Support message staging failed:", error);
+    await ctx.reply("ذخیره پیام انجام نشد. لطفاً دوباره تلاش کن.");
   }
+}
+
+async function deliverPendingMessages(ctx, env, state) {
+  const managerId = adminId(env);
+  if (!managerId) {
+    await ctx.reply("تنظیمات مدیر ربات کامل نیست. لطفاً بعداً دوباره تلاش کن.");
+    console.error("ADMIN_ID is missing or invalid.");
+    return false;
+  }
+
+  const pending = await env.DB.prepare(
+    "SELECT id, source_chat_id, source_message_id, admin_message_id FROM support_pending_messages WHERE user_id = ? ORDER BY id ASC"
+  ).bind(ctx.from.id).all();
+
+  if (!pending.results?.length) return true;
+
+  let headerId = state.admin_header_message_id;
+  if (!headerId) {
+    const name = [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ") || "کاربر";
+    const profile = '<a href="tg://user?id=' + ctx.from.id + '">' + escapeHtml(name) + "</a>";
+    const header = await ctx.api.sendMessage(
+      managerId,
+      "پیام‌های جدید از " + profile + "\n" + "تعداد پیام‌ها: " + pending.results.length,
+      {
+        parse_mode: "HTML",
+        reply_markup: createReactionKeyboard(),
+      }
+    );
+    headerId = header.message_id;
+    await env.DB.prepare(
+      "UPDATE support_user_states SET admin_header_message_id = ? WHERE user_id = ? AND active = 2"
+    ).bind(headerId, ctx.from.id).run();
+  }
+
+  let replyToMessageId = headerId;
+  for (const item of pending.results) {
+    if (item.admin_message_id) {
+      replyToMessageId = Number(item.admin_message_id);
+      continue;
+    }
+
+    const copied = await ctx.api.copyMessage(
+      managerId,
+      Number(item.source_chat_id),
+      Number(item.source_message_id),
+      {
+        reply_parameters: {
+          message_id: replyToMessageId,
+          allow_sending_without_reply: true,
+        },
+      }
+    );
+
+    await env.DB.prepare(
+      "UPDATE support_pending_messages SET admin_message_id = ? WHERE id = ? AND user_id = ?"
+    ).bind(copied.message_id, item.id, ctx.from.id).run();
+
+    await saveMessagePair(
+      env.DB,
+      ctx.from.id,
+      managerId,
+      copied.message_id,
+      Number(item.source_chat_id),
+      Number(item.source_message_id)
+    );
+    replyToMessageId = copied.message_id;
+  }
+
+  return true;
 }
 
 async function forwardAdminReply(ctx, env, mapped) {
@@ -374,12 +411,21 @@ export function registerSupportHandlers(bot, env) {
     // وجود رکورد غیرفعال یعنی کاربر هنوز در صفحه معرفی ارتباط با مدیریت است.
     if (!state) return next();
 
-    await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
-      .bind(ctx.from.id).run();
+    if (Number(state.active) === 2) {
+      await ctx.reply("ارسال نهایی شروع شده؛ برای تکمیل آن دکمه «اتمام گفتگو» رو بزن.", {
+        reply_markup: finalizingKeyboard(),
+      });
+      return;
+    }
+
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(ctx.from.id),
+      env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(ctx.from.id),
+    ]);
 
     const total = Number(state?.message_count || 0);
     const summary = total > 0
-      ? `ارتباط لغو شد. ${total} پیام قبلی برای مدیریت ارسال شده است و قابل پس‌گرفتن نیست.`
+      ? `گفتگو لغو شد؛ هر ${total} پیام موقت حذف شد و چیزی برای مدیریت ارسال نشد.`
       : "درخواست ارتباط لغو شد؛ هیچ پیامی برای مدیریت ارسال نشد.";
     await ctx.reply(summary, { reply_markup: mainKeyboard() });
   });
@@ -387,17 +433,42 @@ export function registerSupportHandlers(bot, env) {
   bot.hears(END_CHAT_TEXT, async (ctx, next) => {
     if (isAdmin(ctx, env)) return next();
     const state = await env.DB.prepare(
-      "SELECT active, message_count FROM support_user_states WHERE user_id = ?"
+      "SELECT active, message_count, admin_header_message_id FROM support_user_states WHERE user_id = ?"
     ).bind(ctx.from.id).first();
-    if (!state?.active || Number(state.message_count || 0) < 1) return next();
+    if (!state || ![1, 2].includes(Number(state.active))) return next();
 
-    await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
-      .bind(ctx.from.id).run();
+    // active=2 نشان می‌دهد تحویل نهایی آغاز شده؛ با زدن دوباره دکمه می‌توان ارسال ناقص را ادامه داد.
+    await env.DB.prepare(
+      "UPDATE support_user_states SET active = 2 WHERE user_id = ?"
+    ).bind(ctx.from.id).run();
 
-    await ctx.reply(
-      `گفتگو با موفقیت پایان یافت. مجموع پیام‌های ارسال‌شده: ${Number(state.message_count)}`,
-      { reply_markup: mainKeyboard() }
-    );
+    await ctx.reply("در حال ارسال پیام‌های گفتگو برای مدیریت...", {
+      reply_markup: finalizingKeyboard(),
+    });
+
+    try {
+      const delivered = await deliverPendingMessages(ctx, env, state);
+      if (!delivered) return;
+
+      const total = Number(state.message_count || 0);
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(ctx.from.id),
+        env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(ctx.from.id),
+      ]);
+
+      await ctx.reply(
+        total > 0
+          ? `گفتگو پایان یافت و ${total} پیام برای مدیریت ارسال شد.`
+          : "گفتگو بدون ارسال پیام پایان یافت.",
+        { reply_markup: mainKeyboard() }
+      );
+    } catch (error) {
+      console.error("Support final delivery failed:", error);
+      await ctx.reply(
+        "ارسال همه پیام‌ها کامل نشد. پیام‌های باقی‌مانده هنوز ذخیره‌اند؛ برای ادامه دوباره «اتمام گفتگو» رو بزن.",
+        { reply_markup: finalizingKeyboard() }
+      );
+    }
   });
 
   bot.command("block", (ctx) => blockUser(ctx, env));
@@ -462,8 +533,10 @@ export function registerSupportHandlers(bot, env) {
 
     if (ctx.message.text?.startsWith("/")) {
       if (ctx.message.text.split(/\s/)[0] === "/start") {
-        await env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?")
-          .bind(ctx.from.id).run();
+        await env.DB.batch([
+          env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(ctx.from.id),
+          env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(ctx.from.id),
+        ]);
       }
       return next();
     }
@@ -472,7 +545,7 @@ export function registerSupportHandlers(bot, env) {
       "SELECT active FROM support_user_states WHERE user_id = ?"
     ).bind(ctx.from.id).first();
 
-    if (!state?.active) return next();
+    if (Number(state?.active) !== 1) return next();
     await forwardUserMessage(ctx, env);
   });
 
