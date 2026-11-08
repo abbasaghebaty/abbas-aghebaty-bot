@@ -431,11 +431,10 @@ export function registerSupportHandlers(bot, env) {
       env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(ctx.from.id),
     ]);
 
-    const total = Number(state?.message_count || 0);
-    const summary = total > 0
-      ? `گفتگو لغو شد؛ هر ${total} پیام موقت حذف شد و چیزی برای مدیریت ارسال نشد.`
-      : "درخواست ارتباط لغو شد؛ هیچ پیامی برای مدیریت ارسال نشد.";
-    await ctx.reply(summary, { reply_markup: mainKeyboard() });
+    await ctx.reply(
+      "عملیات لغو شد و پیامی برای مدیر ارسال نشد.",
+      { reply_markup: mainKeyboard() }
+    );
   });
 
   bot.hears(END_CHAT_TEXT, async (ctx, next) => {
