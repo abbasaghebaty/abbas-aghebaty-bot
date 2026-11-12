@@ -7,6 +7,7 @@ import { registerMainMenuHandlers } from "../handlers/mainMenu.js";
 import { registerSocialHandlers } from "../handlers/socials.js";
 import { registerSkillsHandlers } from "../handlers/skills.js";
 import { registerBroadcastHandlers } from "../handlers/broadcast.js";
+import { registerAccountingHandlers } from "../modules/accounting/handlers.js";
 import { registerFallbackHandler } from "../handlers/fallback.js";
 
 export function createBot(env) {
@@ -27,11 +28,12 @@ export function createBot(env) {
   // Successful replies stay silent; transient failures enter the durable D1 queue.
   registerSupportDeliveryHandlers(bot, env);
   registerSupportHandlers(bot, env);
-  registerStartHandler(bot);
+  registerStartHandler(bot, env);
   registerMainMenuHandlers(bot);
   registerSocialHandlers(bot);
   registerSkillsHandlers(bot);
   registerBroadcastHandlers(bot, env); // must stay BEFORE the fallback handler
+  registerAccountingHandlers(bot, env);
   registerFallbackHandler(bot);
 
   return bot;
