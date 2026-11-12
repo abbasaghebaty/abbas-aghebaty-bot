@@ -12,13 +12,21 @@ function isAdmin(ctx, env) {
   return Boolean(ctx.from) && String(ctx.from.id) === String(env.ADMIN_ID);
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function formatSheet(title, values) {
-  if (!values.length) return "<" + title + ">\n\nهنوز داده‌ای برای نمایش وجود ندارد.";
+  if (!values.length) return "<b>" + escapeHtml(title) + "</b>\n\nهنوز داده‌ای برای نمایش وجود ندارد.";
 
   const lines = values
     .map((row, index) => {
       const cells = (row ?? [])
-        .map((cell, column) => cell === "" || cell == null ? null : String(cell))
+        .map((cell) => cell === "" || cell == null ? null : escapeHtml(cell))
         .filter((cell) => cell !== null);
       return cells.length ? (index + 1) + ". " + cells.join(" | ") : null;
     })
@@ -26,7 +34,8 @@ function formatSheet(title, values) {
 
   const content = lines.slice(0, 35).join("\n") || "اطلاعاتی برای نمایش وجود ندارد.";
   const suffix = lines.length > 35 ? "\n… ادامه اطلاعات در نسخه بعدی نمایش داده می‌شود." : "";
-  return "<b>" + title + "</b>\n\n" + content + suffix;
+  const message = "<b>" + escapeHtml(title) + "</b>\n\n" + content + suffix;
+  return message.length > 3800 ? message.slice(0, 3790) + "…" : message;
 }
 
 export function registerAccountingHandlers(bot, env) {
