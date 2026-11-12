@@ -21,3 +21,6 @@ crons = ["* * * * *"]
 
 # توکن ربات فقط باید به‌صورت Secret در Cloudflare تنظیم شود:
 # npx wrangler secret put BOT_TOKEN
+
+# اطلاعات حساب سرویس گوگل فقط به‌صورت Secret در Cloudflare ذخیره شود:
+# npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON

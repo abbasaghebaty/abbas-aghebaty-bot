@@ -8,6 +8,7 @@ import { registerSocialHandlers } from "../handlers/socials.js";
 import { registerSkillsHandlers } from "../handlers/skills.js";
 import { registerBroadcastHandlers } from "../handlers/broadcast.js";
 import { registerFallbackHandler } from "../handlers/fallback.js";
+import { registerAccountingHandlers } from "../modules/accounting.js";
 
 export function createBot(env) {
   const bot = new Bot(env.BOT_TOKEN);
@@ -27,7 +28,8 @@ export function createBot(env) {
   // Successful replies stay silent; transient failures enter the durable D1 queue.
   registerSupportDeliveryHandlers(bot, env);
   registerSupportHandlers(bot, env);
-  registerStartHandler(bot);
+  registerAccountingHandlers(bot, env);
+  registerStartHandler(bot, env);
   registerMainMenuHandlers(bot);
   registerSocialHandlers(bot);
   registerSkillsHandlers(bot);
