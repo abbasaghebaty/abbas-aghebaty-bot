@@ -50,7 +50,7 @@ function formatDebtAmount(value) {
     : `<b>${safe}</b>`;
 }
 
-function formatDashboard(rows) {
+function formatDashboard(rows, monthlyIncome = null) {
   const data = cleanRows(rows)
     .map(row => row.filter(cell => !String(cell ?? "").trim().startsWith("#REF!")))
     .filter(row => !row.some(cell => String(cell ?? "").includes("حقوق مغازه")))
@@ -98,6 +98,9 @@ function formatDashboard(rows) {
     "<b>📊 داشبورد حسابداری</b>",
     "<i>نمای کلی سرمایه، دریافتی‌ها و حساب اشخاص</i>",
     "",
+    monthlyIncome
+      ? `💰 <b>حقوق عباس در ${escapeHtml(monthlyIncome.month)}:</b> <b>${escapeHtml(monthlyIncome.incomeFormatted)}</b>`
+      : "",
     lines.join("\n")
   ].join("\n");
 }
@@ -170,10 +173,38 @@ async function readRange(env, range) {
   return result?.values || [];
 }
 
+async function getMonthlyIncome(env) {
+  if (!env.MONITORING_API_URL || !env.MONITORING_API_TOKEN) return null;
+  const response = await fetch(env.MONITORING_API_URL, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${env.MONITORING_API_TOKEN}` },
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!response.ok) throw new Error(`Monitoring API returned ${response.status}`);
+  const data = await response.json();
+  if (!data || typeof data.incomeFormatted !== "string" || typeof data.month !== "string") {
+    throw new Error("Monitoring API response is invalid");
+  }
+  return data;
+}
+
 async function renderDashboard(ctx, env) {
   try {
     const rows = await readRange(env, "'داشبورد'!A1:Z60");
-    await ctx.editMessageText(formatDashboard(rows), {
+    let monthlyIncome = null;
+    let incomeError = false;
+    try {
+      monthlyIncome = await getMonthlyIncome(env);
+      incomeError = Boolean(env.MONITORING_API_URL && env.MONITORING_API_TOKEN && !monthlyIncome);
+    } catch (error) {
+      console.error("Monitoring monthly income request failed:", error);
+      incomeError = true;
+    }
+    const dashboard = formatDashboard(rows, monthlyIncome);
+    const message = incomeError
+      ? dashboard + "\\n\\n⚠️ <i>دریافت حقوق این ماه موقتاً ناموفق بود.</i>"
+      : dashboard;
+    await ctx.editMessageText(message, {
       ...OPTIONS,
       reply_markup: accountingBackKeyboard()
     });
