@@ -58,7 +58,7 @@ async function getAccessToken(env) {
   const now = Math.floor(Date.now() / 1000);
   const header = base64UrlEncode(new TextEncoder().encode(JSON.stringify({alg:"RS256",typ:"JWT"})));
   const claim = base64UrlEncode(new TextEncoder().encode(JSON.stringify({iss:credentials.client_email,scope:SHEETS_SCOPE,aud:TOKEN_URL,iat:now,exp:now+3600})));
-  const unsignedJwt = \`${header}.${claim}\`;
+  const unsignedJwt = `${header}.${claim}`;
   let signingKey;
   try {
     signingKey = await crypto.subtle.importKey("pkcs8", pemToArrayBuffer(credentials.private_key),
