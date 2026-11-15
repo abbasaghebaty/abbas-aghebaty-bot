@@ -2,6 +2,7 @@ import {readSheetRanges} from "./googleSheets.js";
 import {
   accountingKeyboard,
   accountingBackKeyboard,
+  accountingAssetsKeyboard,
   accountingDebtsKeyboard
 } from "../keyboards/accounting.js";
 
@@ -9,8 +10,7 @@ const OPTIONS = {
   parse_mode: "HTML",
   link_preview_options: { is_disabled: true }
 };
-const TELEGRAM_LIMIT = 3900;
-const DEBT_PAGE_SIZE = 8;
+const PAGE_SIZE = 8;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -27,32 +27,18 @@ function cleanRows(rows) {
   );
 }
 
-function formatAssets(rows) {
-  const data = cleanRows(rows).slice(1);
-  if (!data.length) {
-    return "<b>📦 سرمایه و دارایی</b>\n\nهنوز کالایی ثبت نشده است.";
-  }
+function formatAssetCard(row, index) {
+  const name = escapeHtml(row[0] || "کالای بدون نام");
+  const fields = [
+    row[1] !== undefined && row[1] !== "" ? `📦 موجودی: <b>${escapeHtml(row[1])}</b>` : "",
+    row[2] !== undefined && row[2] !== "" ? `🛒 قیمت خرید: ${escapeHtml(row[2])}` : "",
+    row[3] !== undefined && row[3] !== "" ? `🏷 قیمت فروش: ${escapeHtml(row[3])}` : "",
+    row[4] !== undefined && row[4] !== "" ? `💰 سود خالص: <b>${escapeHtml(row[4])}</b>` : "",
+    row[5] !== undefined && row[5] !== "" ? `💳 دریافتی: ${escapeHtml(row[5])}` : "",
+    row[6] !== undefined && row[6] !== "" ? `📈 درصد سود: ${escapeHtml(row[6])}` : ""
+  ].filter(Boolean);
 
-  const cards = data.map((row, index) => {
-    const name = escapeHtml(row[0] || "کالای بدون نام");
-    const fields = [
-      row[1] !== undefined && row[1] !== "" ? `📦 موجودی: <b>${escapeHtml(row[1])}</b>` : "",
-      row[2] !== undefined && row[2] !== "" ? `🛒 خرید: ${escapeHtml(row[2])}` : "",
-      row[3] !== undefined && row[3] !== "" ? `🏷 فروش: ${escapeHtml(row[3])}` : "",
-      row[4] !== undefined && row[4] !== "" ? `💰 سود خالص: <b>${escapeHtml(row[4])}</b>` : "",
-      row[5] !== undefined && row[5] !== "" ? `💳 دریافتی: ${escapeHtml(row[5])}` : "",
-      row[6] !== undefined && row[6] !== "" ? `📈 درصد سود: ${escapeHtml(row[6])}` : ""
-    ].filter(Boolean);
-
-    return `<b>${index + 1}. ${name}</b>\n${fields.join("\n")}`;
-  });
-
-  let output = `<b>📦 سرمایه و دارایی</b>\n<i>موجودی و اطلاعات قیمت کالاها</i>\n\n${cards.join("\n\n──────────────\n\n")}`;
-  if (output.length > TELEGRAM_LIMIT) {
-    output = output.slice(0, TELEGRAM_LIMIT - 100) +
-      "\n\n<i>ادامه فهرست در این پیام جا نشد؛ برای دیدن همه کالاها تعداد موارد باید صفحه‌بندی شود.</i>";
-  }
-  return output;
+  return `<b>${index}. ${name}</b>\n${fields.join("\n")}`;
 }
 
 function formatDebtStatus(value) {
@@ -87,12 +73,36 @@ async function readRange(env, range) {
   return result?.values || [];
 }
 
-async function renderAssets(ctx, env) {
+async function renderAssets(ctx, env, requestedPage = 0) {
   try {
-    const rows = await readRange(env, "'سرمایه و دارایی'!A1:G60");
-    await ctx.editMessageText(formatAssets(rows), {
+    const rows = cleanRows(await readRange(env, "'سرمایه و دارایی'!A1:G100"));
+    const data = rows.slice(1);
+    if (!data.length) {
+      await ctx.editMessageText(
+        "<b>📦 سرمایه و دارایی</b>\n\nهنوز کالایی ثبت نشده است.",
+        { ...OPTIONS, reply_markup: accountingBackKeyboard() }
+      );
+      return;
+    }
+
+    const totalPages = Math.ceil(data.length / PAGE_SIZE);
+    const page = Math.max(0, Math.min(Number(requestedPage) || 0, totalPages - 1));
+    const start = page * PAGE_SIZE;
+    const cards = data.slice(start, start + PAGE_SIZE)
+      .map((row, index) => formatAssetCard(row, start + index + 1));
+
+    const message = [
+      "<b>📦 سرمایه و دارایی</b>",
+      "<i>موجودی و اطلاعات قیمت کالاها</i>",
+      "",
+      cards.join("\n\n──────────────\n\n"),
+      "",
+      `<i>صفحه ${page + 1} از ${totalPages} · مجموع ${data.length} کالا</i>`
+    ].join("\n");
+
+    await ctx.editMessageText(message, {
       ...OPTIONS,
-      reply_markup: accountingBackKeyboard()
+      reply_markup: accountingAssetsKeyboard(page, totalPages)
     });
   } catch (error) {
     console.error("Accounting assets read failed:", error);
@@ -115,11 +125,11 @@ async function renderDebts(ctx, env, requestedPage = 0) {
       return;
     }
 
-    const totalPages = Math.ceil(data.length / DEBT_PAGE_SIZE);
+    const totalPages = Math.ceil(data.length / PAGE_SIZE);
     const page = Math.max(0, Math.min(Number(requestedPage) || 0, totalPages - 1));
-    const start = page * DEBT_PAGE_SIZE;
-    const visible = data.slice(start, start + DEBT_PAGE_SIZE);
-    const cards = visible.map((row, index) => formatDebtCard(row, start + index + 1));
+    const start = page * PAGE_SIZE;
+    const cards = data.slice(start, start + PAGE_SIZE)
+      .map((row, index) => formatDebtCard(row, start + index + 1));
 
     const message = [
       "<b>🧾 بدهی و طلب</b>",
@@ -154,13 +164,22 @@ export function registerAccountingHandlers(bot, env) {
     );
   });
 
-  bot.callbackQuery(["acct_assets"], async ctx => {
+  bot.callbackQuery("acct_assets", async ctx => {
     if (!isAdmin(ctx)) {
       await ctx.answerCallbackQuery({ text: "دسترسی مجاز نیست.", show_alert: true });
       return;
     }
     await ctx.answerCallbackQuery();
-    await renderAssets(ctx, env);
+    await renderAssets(ctx, env, 0);
+  });
+
+  bot.callbackQuery(/^acct_assets_page_(\d+)$/, async ctx => {
+    if (!isAdmin(ctx)) {
+      await ctx.answerCallbackQuery({ text: "دسترسی مجاز نیست.", show_alert: true });
+      return;
+    }
+    await ctx.answerCallbackQuery();
+    await renderAssets(ctx, env, Number(ctx.match[1]));
   });
 
   bot.callbackQuery("acct_debts", async ctx => {
