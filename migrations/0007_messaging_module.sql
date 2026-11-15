@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS messaging_deliveries (
   status TEXT NOT NULL DEFAULT 'pending',
   attempts INTEGER NOT NULL DEFAULT 0,
   next_attempt_at TEXT NOT NULL DEFAULT (datetime('now')),
+  locked_until TEXT,
   last_error TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   sent_at TEXT,
@@ -44,7 +45,7 @@ CREATE TABLE IF NOT EXISTS messaging_deliveries (
 );
 
 CREATE INDEX IF NOT EXISTS idx_messaging_deliveries_queue
-ON messaging_deliveries(status, next_attempt_at, created_at);
+ON messaging_deliveries(status, next_attempt_at, locked_until, created_at);
 
 CREATE INDEX IF NOT EXISTS idx_messaging_deliveries_campaign
 ON messaging_deliveries(campaign_id, status);

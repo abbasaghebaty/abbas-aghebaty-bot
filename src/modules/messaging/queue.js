@@ -3,8 +3,7 @@ import { getMessagingTargets } from "./audience.js";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// پیام‌ها به شکل رکوردهای پایدار در D1 ذخیره می‌شوند؛ بنابراین با پایان
-// اجرای یک Worker یا خطای موقت، صف از بین نمی‌رود.
+// کمپین و هر تحویل جداگانه در D1 ذخیره می‌شود تا صف پس از توقف Worker باقی بماند.
 export async function createMessagingCampaign(env, { mode, targets, text, recipientId = null }) {
   const targetMap = new Map(getMessagingTargets(env).map((target) => [target.id, target]));
   const validTargets = targets.filter((id) => targetMap.has(id));
@@ -64,12 +63,26 @@ function getRetryAfter(error) {
   return Number(error?.parameters?.retry_after || error?.error?.parameters?.retry_after || 0);
 }
 
+async function claimDelivery(env, id) {
+  // قفل اتمیک مانع ارسال تکراری در صورت اجرای هم‌زمان دو Cron می‌شود.
+  const result = await env.DB.prepare(
+    `UPDATE messaging_deliveries
+     SET status = 'processing', locked_until = datetime('now', '+120 seconds')
+     WHERE id = ? AND (
+       (status = 'pending' AND next_attempt_at <= datetime('now'))
+       OR (status = 'processing' AND locked_until <= datetime('now'))
+     )`
+  ).bind(id).run();
+  return Number(result.meta?.changes || 0) === 1;
+}
+
 export async function processMessagingQueue(env, maxItems = 200) {
   const targets = new Map(getMessagingTargets(env).map((target) => [target.id, target]));
   const rows = await env.DB.prepare(
-    `SELECT id, campaign_id, target_id, chat_id, message_text, attempts
+    `SELECT id, target_id, chat_id, message_text, attempts
      FROM messaging_deliveries
-     WHERE status = 'pending' AND next_attempt_at <= datetime('now')
+     WHERE (status = 'pending' AND next_attempt_at <= datetime('now'))
+        OR (status = 'processing' AND locked_until <= datetime('now'))
      ORDER BY created_at, id LIMIT ?`
   ).bind(maxItems).all();
 
@@ -79,11 +92,12 @@ export async function processMessagingQueue(env, maxItems = 200) {
 
   for (const row of rows.results || []) {
     if (blockedTargets.has(row.target_id)) continue;
-    const target = targets.get(row.target_id);
+    if (!(await claimDelivery(env, row.id))) continue;
 
+    const target = targets.get(row.target_id);
     if (!target?.token) {
       await env.DB.prepare(
-        "UPDATE messaging_deliveries SET status = 'failed', last_error = ? WHERE id = ?"
+        "UPDATE messaging_deliveries SET status = 'failed', locked_until = NULL, last_error = ? WHERE id = ?"
       ).bind("توکن ربات مقصد در تنظیمات پیدا نشد.", row.id).run();
       failed++;
       continue;
@@ -95,39 +109,46 @@ export async function processMessagingQueue(env, maxItems = 200) {
         link_preview_options: { is_disabled: true },
       });
       await env.DB.prepare(
-        "UPDATE messaging_deliveries SET status = 'sent', sent_at = datetime('now') WHERE id = ?"
+        "UPDATE messaging_deliveries SET status = 'sent', locked_until = NULL, sent_at = datetime('now') WHERE id = ?"
       ).bind(row.id).run();
       sent++;
-      // نرخ محافظه‌کارانه برای جلوگیری از فشار ناگهانی به API تلگرام.
+      // فاصله محافظه‌کارانه برای پایین نگه‌داشتن نرخ ارسال هر ربات.
       await sleep(60);
     } catch (error) {
       const retryAfter = getRetryAfter(error);
       const attempts = Number(row.attempts || 0) + 1;
+      const description = String(error.description || error.message || error).slice(0, 500);
 
       if (retryAfter > 0 && attempts <= 5) {
         await env.DB.prepare(
           `UPDATE messaging_deliveries
-           SET attempts = ?, next_attempt_at = datetime('now', ?), last_error = ?
+           SET status = 'pending', locked_until = NULL, attempts = ?,
+               next_attempt_at = datetime('now', ?), last_error = ?
            WHERE id = ?`
-        ).bind(attempts, `+${Math.max(1, retryAfter)} seconds`, String(error.description || error.message || error).slice(0, 500), row.id).run();
+        ).bind(attempts, `+${Math.max(1, retryAfter)} seconds`, description, row.id).run();
         blockedTargets.add(row.target_id);
       } else {
         await env.DB.prepare(
-          "UPDATE messaging_deliveries SET status = 'failed', attempts = ?, last_error = ? WHERE id = ?"
-        ).bind(attempts, String(error.description || error.message || error).slice(0, 500), row.id).run();
+          "UPDATE messaging_deliveries SET status = 'failed', locked_until = NULL, attempts = ?, last_error = ? WHERE id = ?"
+        ).bind(attempts, description, row.id).run();
         failed++;
       }
     }
   }
 
+  // کمپین فقط وقتی تمام می‌شود که هیچ تحویل منتظر یا در حال پردازشی نداشته باشد.
   await env.DB.prepare(
     `UPDATE messaging_campaigns
      SET status = CASE
-       WHEN NOT EXISTS (SELECT 1 FROM messaging_deliveries d WHERE d.campaign_id = messaging_campaigns.id AND d.status IN ('pending'))
-       THEN 'finished' ELSE 'queued' END,
+       WHEN NOT EXISTS (
+         SELECT 1 FROM messaging_deliveries d
+         WHERE d.campaign_id = messaging_campaigns.id AND d.status IN ('pending', 'processing')
+       ) THEN 'finished' ELSE 'queued' END,
        finished_at = CASE
-       WHEN NOT EXISTS (SELECT 1 FROM messaging_deliveries d WHERE d.campaign_id = messaging_campaigns.id AND d.status IN ('pending'))
-       THEN datetime('now') ELSE NULL END
+       WHEN NOT EXISTS (
+         SELECT 1 FROM messaging_deliveries d
+         WHERE d.campaign_id = messaging_campaigns.id AND d.status IN ('pending', 'processing')
+       ) THEN datetime('now') ELSE NULL END
      WHERE status IN ('queued', 'sending')`
   ).run();
 
