@@ -2,6 +2,7 @@ import { InlineKeyboard } from "grammy";
 
 export function accountingKeyboard() {
   return new InlineKeyboard()
+    .text("📊 داشبورد", "acct_dashboard").row()
     .text("📦 سرمایه و دارایی", "acct_assets").row()
     .text("🧾 بدهی و طلب", "acct_debts");
 }
