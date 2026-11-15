@@ -10,7 +10,7 @@ const OPTIONS = {
   parse_mode: "HTML",
   link_preview_options: { is_disabled: true }
 };
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 5;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -25,6 +25,71 @@ function cleanRows(rows) {
     Array.isArray(row) &&
     row.some(cell => String(cell ?? "").trim() !== "")
   );
+}
+
+function formatDashboard(rows) {
+  const data = cleanRows(rows);
+  if (!data.length) {
+    return "<b>📊 داشبورد حسابداری</b>\n\nاطلاعاتی برای نمایش ثبت نشده است.";
+  }
+
+  const lines = [];
+
+  for (const row of data) {
+    const cells = row
+      .map((value, index) => ({ value: String(value ?? "").trim(), index }))
+      .filter(cell => cell.value !== "");
+
+    if (!cells.length) continue;
+
+    if (cells.length === 1) {
+      lines.push(`\n<b>🔹 ${escapeHtml(cells[0].value)}</b>`);
+      continue;
+    }
+
+    if (cells.length === 2) {
+      const label = cells[0].value;
+      const value = cells[1].value;
+      const normalized = label.toLowerCase();
+
+      let icon = "▪️";
+      if (normalized.includes("سرمایه")) icon = "🏦";
+      else if (normalized.includes("دریافت")) icon = "💳";
+      else if (normalized.includes("طلب")) icon = "🟢";
+      else if (normalized.includes("بده")) icon = "🔴";
+      else if (["بابا", "مامان", "صادق", "رضا"].includes(label)) icon = "👤";
+
+      lines.push(`${icon} <b>${escapeHtml(label)}</b>  <code>${escapeHtml(value)}</code>`);
+      continue;
+    }
+
+    const label = cells[0].value;
+    const details = cells.slice(1).map(cell => escapeHtml(cell.value));
+    lines.push(`<b>🔸 ${escapeHtml(label)}</b>\n${details.join("  |  ")}`);
+  }
+
+  return [
+    "<b>📊 داشبورد حسابداری</b>",
+    "<i>نمای کلی سرمایه، دریافتی‌ها و حساب اشخاص</i>",
+    "",
+    lines.join("\n")
+  ].join("\n");
+}
+
+function toAsciiDigits(value) {
+  return String(value ?? "")
+    .replace(/[۰-۹]/g, digit => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+    .replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
+}
+
+function isZeroQuantity(value) {
+  const normalized = toAsciiDigits(value)
+    .replace(/[٬،,]/g, "")
+    .trim();
+
+  if (!normalized) return false;
+  const numeric = Number(normalized);
+  return Number.isFinite(numeric) && numeric === 0;
 }
 
 function formatAssetCard(row, index) {
@@ -52,6 +117,12 @@ function formatDebtStatus(value) {
   return value ? escapeHtml(value) : "—";
 }
 
+function hasDebtContent(row) {
+  return row.some((value, index) =>
+    index !== 4 && String(value ?? "").trim() !== ""
+  );
+}
+
 function formatDebtCard(row, index) {
   const title = escapeHtml(row[0] || "تراکنش بدون عنوان");
   const person = escapeHtml(row[1] || "نامشخص");
@@ -73,13 +144,29 @@ async function readRange(env, range) {
   return result?.values || [];
 }
 
+async function renderDashboard(ctx, env) {
+  try {
+    const rows = await readRange(env, "'داشبورد'!A1:Z60");
+    await ctx.editMessageText(formatDashboard(rows), {
+      ...OPTIONS,
+      reply_markup: accountingBackKeyboard()
+    });
+  } catch (error) {
+    console.error("Accounting dashboard read failed:", error);
+    await ctx.editMessageText(
+      `❌ <b>دریافت داشبورد حسابداری ناموفق بود</b>\n\n${escapeHtml(error.message || "خطای نامشخص")}`,
+      { ...OPTIONS, reply_markup: accountingBackKeyboard() }
+    );
+  }
+}
+
 async function renderAssets(ctx, env, requestedPage = 0) {
   try {
     const rows = cleanRows(await readRange(env, "'سرمایه و دارایی'!A1:G100"));
-    const data = rows.slice(1);
+    const data = rows.slice(1).filter(row => !isZeroQuantity(row[1]));
     if (!data.length) {
       await ctx.editMessageText(
-        "<b>📦 سرمایه و دارایی</b>\n\nهنوز کالایی ثبت نشده است.",
+        "<b>📦 سرمایه و دارایی</b>\n\nدر حال حاضر کالایی با موجودی بیشتر از صفر ثبت نشده است.",
         { ...OPTIONS, reply_markup: accountingBackKeyboard() }
       );
       return;
@@ -93,7 +180,7 @@ async function renderAssets(ctx, env, requestedPage = 0) {
 
     const message = [
       "<b>📦 سرمایه و دارایی</b>",
-      "<i>موجودی و اطلاعات قیمت کالاها</i>",
+      "<i>فقط کالاهای دارای موجودی نمایش داده می‌شوند</i>",
       "",
       cards.join("\n\n──────────────\n\n"),
       "",
@@ -116,7 +203,7 @@ async function renderAssets(ctx, env, requestedPage = 0) {
 async function renderDebts(ctx, env, requestedPage = 0) {
   try {
     const rows = cleanRows(await readRange(env, "'بدهی و طلب'!A1:G100"));
-    const data = rows.slice(1);
+    const data = rows.slice(1).filter(hasDebtContent);
     if (!data.length) {
       await ctx.editMessageText(
         "<b>🧾 بدهی و طلب</b>\n\nموردی ثبت نشده است.",
@@ -133,7 +220,7 @@ async function renderDebts(ctx, env, requestedPage = 0) {
 
     const message = [
       "<b>🧾 بدهی و طلب</b>",
-      "<i>وضعیت هر مورد و شخص مربوطه</i>",
+      "<i>ردیف‌های خالی و ردیف‌های دارای فقط تیک، نمایش داده نمی‌شوند</i>",
       "",
       cards.join("\n\n──────────────\n\n"),
       "",
@@ -162,6 +249,15 @@ export function registerAccountingHandlers(bot, env) {
       "🧾 <b>بخش حسابداری</b>\n\nبخش موردنظر را انتخاب کن:",
       { ...OPTIONS, reply_markup: accountingKeyboard() }
     );
+  });
+
+  bot.callbackQuery("acct_dashboard", async ctx => {
+    if (!isAdmin(ctx)) {
+      await ctx.answerCallbackQuery({ text: "دسترسی مجاز نیست.", show_alert: true });
+      return;
+    }
+    await ctx.answerCallbackQuery();
+    await renderDashboard(ctx, env);
   });
 
   bot.callbackQuery("acct_assets", async ctx => {
