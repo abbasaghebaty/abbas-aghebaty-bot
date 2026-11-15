@@ -125,3 +125,41 @@
 - برای هر تغییر ساختار D1، migration جدید بساز؛ migration قبلی را ویرایش نکن.
 - توکن‌ها و رمزهای مشترک فقط در Cloudflare Secrets باشند.
 - هنگام افزودن هندلر عمومی پیام، ترتیب ثبت در `createBot.js` را بررسی کن تا ورودی‌های مرحله‌ای ماژول‌ها تداخل نکنند.
+
+نمونه تابع همگام‌سازی برای Worker ربات مقصد:
+
+```js
+export async function syncUsersToAssistant(env, users) {
+  const endpoint = env.ASSISTANT_MESSAGING_SYNC_URL;
+  const secret = env.MESSAGING_SYNC_SECRET;
+  const botId = env.MESSAGING_BOT_ID;
+
+  if (!endpoint || !secret || !botId) {
+    throw new Error("Messaging sync environment is incomplete.");
+  }
+
+  for (let i = 0; i < users.length; i += 500) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${secret}`,
+      },
+      body: JSON.stringify({
+        bot_id: botId,
+        users: users.slice(i, i + 500).map((user) => ({
+          telegram_id: user.telegram_id,
+          username: user.username ?? null,
+          first_name: user.first_name ?? null,
+        })),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Audience sync failed: ${response.status}`);
+    }
+  }
+}
+```
+
+برای همگام‌سازی اولیه کاربران قدیمی، یک‌بار فهرست کاربران موجود در دیتابیس همان ربات را با همین تابع ارسال کن. بعد از آن، تابع را پس از ثبت یا به‌روزرسانی کاربر فراخوانی کن. در Worker مقصد، `ASSISTANT_MESSAGING_SYNC_URL` و `MESSAGING_BOT_ID` را به‌صورت متغیر و `MESSAGING_SYNC_SECRET` را به‌صورت Secret تعریف کن.
