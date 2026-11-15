@@ -202,7 +202,7 @@ async function renderDashboard(ctx, env) {
     }
     const dashboard = formatDashboard(rows, monthlyIncome);
     const message = incomeError
-      ? dashboard + "\\n\\n⚠️ <i>دریافت حقوق این ماه موقتاً ناموفق بود.</i>"
+      ? dashboard + "\n\n⚠️ <i>دریافت حقوق این ماه موقتاً ناموفق بود.</i>"
       : dashboard;
     await ctx.editMessageText(message, {
       ...OPTIONS,
