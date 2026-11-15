@@ -68,7 +68,7 @@ async function getAccessToken(env) {
     throw new Error("private_key قابل پردازش نیست؛ کلید خصوصی باید کامل و با قالب PEM اصلی باشد.");
   }
   const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", signingKey, new TextEncoder().encode(unsignedJwt));
-  const assertion = \`${unsignedJwt}.${base64UrlEncode(new Uint8Array(signature))}\`;
+  const assertion = `${unsignedJwt}.${base64UrlEncode(new Uint8Array(signature))}`;
   const response = await fetch(TOKEN_URL,{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},
     body:new URLSearchParams({grant_type:"urn:ietf:params:oauth:grant-type:jwt-bearer",assertion})});
   const result = await response.json();
