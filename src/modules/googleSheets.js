@@ -7,12 +7,12 @@ let cachedTokenExpiresAt = 0;
 function base64UrlEncode(bytes) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
 }
 function pemToArrayBuffer(pem) {
-  const normalized = pem.replace(/\\n/g, "\n").replace(/\r/g, "");
+  const normalized = pem.replace(/\\\\n/g, "\n").replace(/\\r/g, "");
   const base64 = normalized.replace(/-----BEGIN PRIVATE KEY-----/g, "")
-    .replace(/-----END PRIVATE KEY-----/g, "").replace(/\s/g, "");
+    .replace(/-----END PRIVATE KEY-----/g, "").replace(/\\s/g, "");
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -20,11 +20,36 @@ function pemToArrayBuffer(pem) {
 }
 function readServiceAccount(env) {
   const raw = env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!raw || typeof raw !== "string") throw new Error("Secret با نام GOOGLE_SERVICE_ACCOUNT_JSON در Cloudflare تنظیم نشده است.");
-  let credentials;
-  try { credentials = JSON.parse(raw); }
-  catch { throw new Error("مقدار GOOGLE_SERVICE_ACCOUNT_JSON یک JSON معتبر نیست. کل محتوای فایل اصلی را بدون کوتیشن اضافه در Secret قرار بده."); }
-  if (!credentials.client_email || !credentials.private_key) throw new Error("JSON حساب سرویس باید هر دو فیلد client_email و private_key را داشته باشد.");
+  if (typeof raw !== "string" || !raw.trim()) {
+    throw new Error("Secret با نام GOOGLE_SERVICE_ACCOUNT_JSON در تنظیمات Cloudflare Worker پیدا نشد یا خالی است.");
+  }
+
+  // Cloudflare Secret باید کل JSON باشد. اگر محتوا اشتباهاً یک بار
+  // دیگر به شکل JSON string ذخیره شده باشد، آن را نیز باز می‌کنیم.
+  let parsed;
+  try {
+    const cleaned = raw.trim().replace(/^\\uFEFF/, "");
+    parsed = JSON.parse(cleaned);
+    if (typeof parsed === "string") parsed = JSON.parse(parsed.trim());
+  } catch {
+    throw new Error("مقدار GOOGLE_SERVICE_ACCOUNT_JSON قابل‌خواندن نیست. کل JSON اصلی Service Account را بدون کوتیشن اضافه در Secret قرار بده.");
+  }
+
+  // بعضی ابزارها JSON را داخل یک کلید credentials می‌پیچند.
+  const credentials = parsed?.credentials && typeof parsed.credentials === "object"
+    ? parsed.credentials
+    : parsed;
+
+  if (!credentials || typeof credentials !== "object" ||
+      typeof credentials.client_email !== "string" ||
+      typeof credentials.private_key !== "string") {
+    const keys = credentials && typeof credentials === "object"
+      ? Object.keys(credentials).join(", ")
+      : typeof credentials;
+    console.error("Google service-account JSON shape is invalid. Available keys:", keys);
+    throw new Error("JSON خوانده شد، اما فیلدهای client_email و private_key در سطح اصلی آن پیدا نشدند. فایل باید JSON اصلی Service Account گوگل باشد.");
+  }
+
   return credentials;
 }
 async function getAccessToken(env) {
