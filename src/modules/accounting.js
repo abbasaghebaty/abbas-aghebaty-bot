@@ -29,7 +29,7 @@ function cleanRows(rows) {
 
 function boldNumbers(value) {
   return escapeHtml(value).replace(
-    /(^|[^\\w>])([+-]?(?:\\d{1,3}(?:[,٬،]\\d{3})+|\\d+)(?:[./]\\d+)?)(?=$|[^\\w<])/g,
+    /(^|[^\w>])([+-]?(?:\d{1,3}(?:[,٬،]\d{3})+|\d+)(?:[./]\d+)?)(?=$|[^\w<])/g,
     "$1<b>$2</b>"
   );
 }
