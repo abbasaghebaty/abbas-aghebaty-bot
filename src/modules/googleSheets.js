@@ -7,12 +7,12 @@ let cachedTokenExpiresAt = 0;
 function base64UrlEncode(bytes) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 function pemToArrayBuffer(pem) {
-  const normalized = pem.replace(/\\\\n/g, "\n").replace(/\\r/g, "");
+  const normalized = pem.replace(/\\n/g, "\n").replace(/\r/g, "");
   const base64 = normalized.replace(/-----BEGIN PRIVATE KEY-----/g, "")
-    .replace(/-----END PRIVATE KEY-----/g, "").replace(/\\s/g, "");
+    .replace(/-----END PRIVATE KEY-----/g, "").replace(/\s/g, "");
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -28,7 +28,7 @@ function readServiceAccount(env) {
   // دیگر به شکل JSON string ذخیره شده باشد، آن را نیز باز می‌کنیم.
   let parsed;
   try {
-    const cleaned = raw.trim().replace(/^\\uFEFF/, "");
+    const cleaned = raw.trim().replace(/^\uFEFF/, "");
     parsed = JSON.parse(cleaned);
     if (typeof parsed === "string") parsed = JSON.parse(parsed.trim());
   } catch {
@@ -58,7 +58,7 @@ async function getAccessToken(env) {
   const now = Math.floor(Date.now() / 1000);
   const header = base64UrlEncode(new TextEncoder().encode(JSON.stringify({alg:"RS256",typ:"JWT"})));
   const claim = base64UrlEncode(new TextEncoder().encode(JSON.stringify({iss:credentials.client_email,scope:SHEETS_SCOPE,aud:TOKEN_URL,iat:now,exp:now+3600})));
-  const unsignedJwt = `${header}.${claim}`;
+  const unsignedJwt = \`${header}.${claim}\`;
   let signingKey;
   try {
     signingKey = await crypto.subtle.importKey("pkcs8", pemToArrayBuffer(credentials.private_key),
@@ -68,7 +68,7 @@ async function getAccessToken(env) {
     throw new Error("private_key قابل پردازش نیست؛ کلید خصوصی باید کامل و با قالب PEM اصلی باشد.");
   }
   const signature = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", signingKey, new TextEncoder().encode(unsignedJwt));
-  const assertion = `${unsignedJwt}.${base64UrlEncode(new Uint8Array(signature))}`;
+  const assertion = \`${unsignedJwt}.${base64UrlEncode(new Uint8Array(signature))}\`;
   const response = await fetch(TOKEN_URL,{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},
     body:new URLSearchParams({grant_type:"urn:ietf:params:oauth:grant-type:jwt-bearer",assertion})});
   const result = await response.json();
@@ -83,8 +83,8 @@ export async function readSheetRanges(env,ranges) {
   const token=await getAccessToken(env);
   const params=new URLSearchParams({valueRenderOption:"FORMATTED_VALUE"});
   for(const range of ranges) params.append("ranges",range);
-  const url=`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?${params}`;
-  const response=await fetch(url,{headers:{authorization:`Bearer ${token}`}});
+  const url=\`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?${params}\`;
+  const response=await fetch(url,{headers:{authorization:\`Bearer ${token}\`}});
   const result=await response.json();
   if(!response.ok) {
     console.error("Google Sheets API error:",result.error?.message||response.status);
