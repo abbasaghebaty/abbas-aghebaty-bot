@@ -60,27 +60,42 @@ function formatDashboard(rows, monthlyIncome = null) {
   const peopleLines = [];
   const otherLines = [];
 
-  for (const row of data) {
-    const cells = row
+  for (let i = 0; i < data.length; i++) {
+    const cells = data[i]
       .map(value => String(value ?? "").trim())
       .filter(value => value !== "");
 
     if (!cells.length) continue;
 
-    if (cells.length === 1) {
-      otherLines.push(`<b>🔹 ${boldNumbers(cells[0])}</b>`);
+    // The sheet stores the two capital labels on one row and their values on the next.
+    if (
+      cells.length === 2 &&
+      cells[0].includes("ارزش سرمایه") &&
+      cells[1].includes("دریافت")
+    ) {
+      const valueCells = (data[i + 1] || [])
+        .map(value => String(value ?? "").trim())
+        .filter(value => value !== "");
+
+      if (valueCells.length >= 2) {
+        otherLines.push(
+          `🏦 <b>${escapeHtml(cells[0])}:</b> ${boldNumbers(valueCells[0])}`,
+          `💳 <b>${escapeHtml(cells[1])}:</b> ${boldNumbers(valueCells[1])}`
+        );
+        i++;
+      } else {
+        otherLines.push(
+          `🏦 <b>${escapeHtml(cells[0])}:</b> —`,
+          `💳 <b>${escapeHtml(cells[1])}:</b> —`
+        );
+      }
       continue;
     }
 
-    if (
-      cells.length === 4 &&
-      cells[0].includes("سرمایه") &&
-      cells[1].includes("دریافت")
-    ) {
-      otherLines.push(
-        `🏦 <b>${escapeHtml(cells[0])}:</b> ${boldNumbers(cells[2])}`,
-        `💳 <b>${escapeHtml(cells[1])}:</b> ${boldNumbers(cells[3])}`
-      );
+    if (cells.length === 1 && cells[0] === "خلاصه حساب") continue;
+
+    if (cells.length === 1) {
+      otherLines.push(`<b>🔹 ${boldNumbers(cells[0])}</b>`);
       continue;
     }
 
