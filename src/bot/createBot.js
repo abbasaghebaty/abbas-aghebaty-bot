@@ -1,12 +1,12 @@
 import { Bot } from "grammy";
 import { upsertUser } from "../database/users.js";
-import { registerSupportHandlers } from "../modules/support.js";
 import { registerSupportDeliveryHandlers } from "../modules/supportDeliveryQueue.js";
+import { registerMessagingHandlers } from "../modules/messaging/index.js";
+import { registerSupportHandlers } from "../modules/support.js";
 import { registerStartHandler } from "../handlers/start.js";
 import { registerMainMenuHandlers } from "../handlers/mainMenu.js";
 import { registerSocialHandlers } from "../handlers/socials.js";
 import { registerSkillsHandlers } from "../handlers/skills.js";
-import { registerBroadcastHandlers } from "../handlers/broadcast.js";
 import { registerFallbackHandler } from "../handlers/fallback.js";
 import { registerAccountingHandlers } from "../modules/accounting.js";
 
@@ -24,16 +24,16 @@ export function createBot(env) {
     await next();
   });
 
-  // Intercept mapped administrator replies before the legacy support relay.
-  // Successful replies stay silent; transient failures enter the durable D1 queue.
+  // پیام‌رسانی قبل از هندلر عمومی پشتیبانی ثبت می‌شود تا ورودی‌های مرحله‌ای
+  // مدیر (شناسه کاربر و متن پیام) توسط ماژول خودش مصرف شوند.
   registerSupportDeliveryHandlers(bot, env);
+  registerMessagingHandlers(bot, env);
   registerSupportHandlers(bot, env);
   registerAccountingHandlers(bot, env);
   registerStartHandler(bot, env);
   registerMainMenuHandlers(bot);
   registerSocialHandlers(bot);
   registerSkillsHandlers(bot);
-  registerBroadcastHandlers(bot, env); // must stay BEFORE the fallback handler
   registerFallbackHandler(bot);
 
   return bot;

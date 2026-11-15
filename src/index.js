@@ -1,10 +1,18 @@
 import { webhookCallback } from "grammy";
 import { createBot } from "./bot/createBot.js";
 import { processSupportDeliveryQueue } from "./modules/supportDeliveryQueue.js";
+import { processMessagingQueue } from "./modules/messaging/queue.js";
+import { syncMessagingAudience } from "./modules/messaging/audience.js";
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    // endpoint خصوصی برای همگام‌سازی مخاطبان ربات‌های متصل.
+    if (url.pathname === "/internal/messaging/sync-users" && request.method === "POST") {
+      return syncMessagingAudience(request, env);
+    }
+
     const bot = createBot(env);
 
     if (url.pathname === "/webhook") {
@@ -35,10 +43,13 @@ export default {
 
   async scheduled(controller, env, ctx) {
     const bot = createBot(env);
-    ctx.waitUntil(
+    ctx.waitUntil(Promise.all([
       processSupportDeliveryQueue(bot.api, env, 20).catch((error) => {
         console.error("Scheduled support delivery retry failed:", error);
-      })
-    );
+      }),
+      processMessagingQueue(env, 200).catch((error) => {
+        console.error("Scheduled messaging queue failed:", error);
+      }),
+    ]));
   },
 };
