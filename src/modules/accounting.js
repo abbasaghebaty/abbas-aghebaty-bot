@@ -72,6 +72,18 @@ function formatDashboard(rows, monthlyIncome = null) {
       continue;
     }
 
+    if (
+      cells.length === 4 &&
+      cells[0].includes("سرمایه") &&
+      cells[1].includes("دریافت")
+    ) {
+      otherLines.push(
+        `🏦 <b>${escapeHtml(cells[0])}:</b> ${boldNumbers(cells[2])}`,
+        `💳 <b>${escapeHtml(cells[1])}:</b> ${boldNumbers(cells[3])}`
+      );
+      continue;
+    }
+
     if (cells.length === 2) {
       const [label, value] = cells;
       const normalized = label.toLowerCase();
