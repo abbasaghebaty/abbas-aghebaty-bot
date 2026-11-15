@@ -220,16 +220,38 @@ async function readRange(env, range) {
 }
 
 async function getMonthlyIncome(env) {
-  if (!env.MONITORING_API_URL || !env.MONITORING_API_TOKEN) return null;
+  if (!env.MONITORING_API_URL || !env.MONITORING_API_TOKEN) {
+    const missing = [
+      !env.MONITORING_API_URL ? "MONITORING_API_URL" : null,
+      !env.MONITORING_API_TOKEN ? "MONITORING_API_TOKEN" : null
+    ].filter(Boolean);
+    throw new Error(`تنظیمات ناقص است؛ متغیرهای موجود نیستند: ${missing.join(", ")}`);
+  }
+
   const response = await fetch(env.MONITORING_API_URL, {
     method: "GET",
     headers: { Authorization: `Bearer ${env.MONITORING_API_TOKEN}` },
     signal: AbortSignal.timeout(8000)
   });
-  if (!response.ok) throw new Error(`Monitoring API returned ${response.status}`);
-  const data = await response.json();
+
+  if (!response.ok) {
+    const responseBody = (await response.text()).slice(0, 2500);
+    throw new Error(
+      `پاسخ API ناموفق بود. HTTP ${response.status} ${response.statusText || ""}\nپاسخ سرور: ${responseBody || "(بدون متن)"}`
+    );
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error(`پاسخ API JSON معتبر نیست: ${error.message || error}`);
+  }
+
   if (!data || typeof data.incomeFormatted !== "string" || typeof data.month !== "string") {
-    throw new Error("Monitoring API response is invalid");
+    throw new Error(
+      `ساختار پاسخ API معتبر نیست. فیلدهای دریافت‌شده: ${Object.keys(data || {}).join(", ") || "(هیچ‌کدام)"}`
+    );
   }
   return data;
 }
@@ -239,21 +261,42 @@ async function renderDashboard(ctx, env) {
     const rows = await readRange(env, "'داشبورد'!A1:Z60");
     let monthlyIncome = null;
     let incomeError = false;
+    let incomeDiagnostic = "";
+
     try {
       monthlyIncome = await getMonthlyIncome(env);
-      incomeError = Boolean(env.MONITORING_API_URL && env.MONITORING_API_TOKEN && !monthlyIncome);
     } catch (error) {
       console.error("Monitoring monthly income request failed:", error);
       incomeError = true;
+      incomeDiagnostic = String(error?.stack || error?.message || error);
+
+      // Never include the API token in a user-visible diagnostic message.
+      if (env.MONITORING_API_TOKEN) {
+        incomeDiagnostic = incomeDiagnostic.split(env.MONITORING_API_TOKEN).join("[REDACTED]");
+      }
+      incomeDiagnostic = incomeDiagnostic.slice(0, 3200);
     }
+
     const dashboard = formatDashboard(rows, monthlyIncome);
     const message = incomeError
       ? dashboard + "\n\n⚠️ <i>دریافت حقوق این ماه موقتاً ناموفق بود.</i>"
       : dashboard;
+
     await ctx.editMessageText(message, {
       ...OPTIONS,
       reply_markup: accountingBackKeyboard()
     });
+
+    if (incomeError) {
+      try {
+        await ctx.reply(
+          `🔎 <b>گزارش تشخیصی دریافت حقوق</b>\n\n<pre>${escapeHtml(incomeDiagnostic || "علت خطا مشخص نشد.")}</pre>\n\n<i>این گزارش فقط برای مدیر بخش حسابداری ارسال شده است.</i>`,
+          OPTIONS
+        );
+      } catch (sendError) {
+        console.error("Could not send monthly income diagnostic:", sendError);
+      }
+    }
   } catch (error) {
     console.error("Accounting dashboard read failed:", error);
     await ctx.editMessageText(
