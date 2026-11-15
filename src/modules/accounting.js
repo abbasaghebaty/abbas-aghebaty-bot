@@ -27,8 +27,34 @@ function cleanRows(rows) {
   );
 }
 
+function boldNumbers(value) {
+  return escapeHtml(value).replace(
+    /(^|[^\\w>])([+-]?(?:\\d{1,3}(?:[,٬،]\\d{3})+|\\d+)(?:[./]\\d+)?)(?=$|[^\\w<])/g,
+    "$1<b>$2</b>"
+  );
+}
+
+function parseAmount(value) {
+  const normalized = toAsciiDigits(value)
+    .replace(/[٬،,]/g, "")
+    .replace(/[^0-9.+-]/g, "");
+  const amount = Number(normalized);
+  return Number.isFinite(amount) ? amount : null;
+}
+
+function formatDebtAmount(value) {
+  const safe = escapeHtml(value || "—");
+  const amount = parseAmount(value);
+  return amount !== null && amount > 400
+    ? `<b><u>${safe}</u></b>`
+    : `<b>${safe}</b>`;
+}
+
 function formatDashboard(rows) {
-  const data = cleanRows(rows);
+  const data = cleanRows(rows)
+    .map(row => row.filter(cell => !String(cell ?? "").trim().startsWith("#REF!")))
+    .filter(row => !row.some(cell => String(cell ?? "").includes("حقوق مغازه")))
+    .filter(row => row.some(cell => String(cell ?? "").trim() !== ""));
   if (!data.length) {
     return "<b>📊 داشبورد حسابداری</b>\n\nاطلاعاتی برای نمایش ثبت نشده است.";
   }
@@ -59,12 +85,12 @@ function formatDashboard(rows) {
       else if (normalized.includes("بده")) icon = "🔴";
       else if (["بابا", "مامان", "صادق", "رضا"].includes(label)) icon = "👤";
 
-      lines.push(`${icon} <b>${escapeHtml(label)}</b>  <code>${escapeHtml(value)}</code>`);
+      lines.push(`${icon} <b>${escapeHtml(label)}</b>  ${boldNumbers(value)}`);
       continue;
     }
 
     const label = cells[0].value;
-    const details = cells.slice(1).map(cell => escapeHtml(cell.value));
+    const details = cells.slice(1).map(cell => boldNumbers(cell.value));
     lines.push(`<b>🔸 ${escapeHtml(label)}</b>\n${details.join("  |  ")}`);
   }
 
@@ -96,11 +122,11 @@ function formatAssetCard(row, index) {
   const name = escapeHtml(row[0] || "کالای بدون نام");
   const fields = [
     row[1] !== undefined && row[1] !== "" ? `📦 موجودی: <b>${escapeHtml(row[1])}</b>` : "",
-    row[2] !== undefined && row[2] !== "" ? `🛒 قیمت خرید: ${escapeHtml(row[2])}` : "",
-    row[3] !== undefined && row[3] !== "" ? `🏷 قیمت فروش: ${escapeHtml(row[3])}` : "",
-    row[4] !== undefined && row[4] !== "" ? `💰 سود خالص: <b>${escapeHtml(row[4])}</b>` : "",
-    row[5] !== undefined && row[5] !== "" ? `💳 دریافتی: ${escapeHtml(row[5])}` : "",
-    row[6] !== undefined && row[6] !== "" ? `📈 درصد سود: ${escapeHtml(row[6])}` : ""
+    row[2] !== undefined && row[2] !== "" ? `🛒 قیمت خرید: ${boldNumbers(row[2])}` : "",
+    row[3] !== undefined && row[3] !== "" ? `🏷 قیمت فروش: ${boldNumbers(row[3])}` : "",
+    row[4] !== undefined && row[4] !== "" ? `💰 سود خالص: ${boldNumbers(row[4])}` : "",
+    row[5] !== undefined && row[5] !== "" ? `💳 دریافتی: ${boldNumbers(row[5])}` : "",
+    row[6] !== undefined && row[6] !== "" ? `📈 درصد سود: ${boldNumbers(row[6])}` : ""
   ].filter(Boolean);
 
   return `<b>${index}. ${name}</b>\n${fields.join("\n")}`;
@@ -127,7 +153,7 @@ function formatDebtCard(row, index) {
   const title = escapeHtml(row[0] || "تراکنش بدون عنوان");
   const person = escapeHtml(row[1] || "نامشخص");
   const type = String(row[2] || "").trim();
-  const amount = escapeHtml(row[3] || "—");
+  const amount = formatDebtAmount(row[3]);
   const status = formatDebtStatus(row[4]);
   const note = row[5] ? `\n📝 توضیح: ${escapeHtml(row[5])}` : "";
   const deadline = row[6] ? `\n📅 مهلت: ${escapeHtml(row[6])}` : "";
