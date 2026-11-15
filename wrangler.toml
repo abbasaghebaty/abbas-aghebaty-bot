@@ -16,6 +16,11 @@ binding = "DB"
 database_name = "abbas-aghebaty-bot"
 database_id = "df9f5c73-eedb-4352-bde6-5b8aea6167e0"
 
+# ارتباط داخلی مستقیم با Worker مانیتورینگ (جلوگیری از خطای 1042)
+[[services]]
+binding = "MONITORING_API"
+service = "monitoring-shoma"
+
 # تلاش مجدد خودکار برای پاسخ‌های ناموفق پشتیبانی، هر دقیقه
 # [triggers]
 # crons = ["* * * * *"]
