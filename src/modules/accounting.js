@@ -228,7 +228,11 @@ async function getMonthlyIncome(env) {
     throw new Error(`تنظیمات ناقص است؛ متغیرهای موجود نیستند: ${missing.join(", ")}`);
   }
 
-  const response = await fetch(env.MONITORING_API_URL, {
+  if (!env.MONITORING_API) {
+    throw new Error("Service Binding با نام MONITORING_API تنظیم نشده است.");
+  }
+
+  const response = await env.MONITORING_API.fetch(env.MONITORING_API_URL, {
     method: "GET",
     headers: { Authorization: `Bearer ${env.MONITORING_API_TOKEN}` },
     signal: AbortSignal.timeout(8000)
