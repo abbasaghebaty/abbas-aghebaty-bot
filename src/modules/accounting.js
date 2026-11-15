@@ -69,7 +69,7 @@ function formatDashboard(rows) {
     if (!cells.length) continue;
 
     if (cells.length === 1) {
-      lines.push(`\n<b>🔹 ${escapeHtml(cells[0].value)}</b>`);
+      lines.push(`\n<b>🔹 ${boldNumbers(cells[0].value)}</b>`);
       continue;
     }
 
