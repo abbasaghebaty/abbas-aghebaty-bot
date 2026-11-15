@@ -55,27 +55,25 @@ function formatDashboard(rows, monthlyIncome = null) {
     .map(row => row.filter(cell => !String(cell ?? "").trim().startsWith("#REF!")))
     .filter(row => !row.some(cell => String(cell ?? "").includes("حقوق مغازه")))
     .filter(row => row.some(cell => String(cell ?? "").trim() !== ""));
-  if (!data.length) {
-    return "<b>📊 داشبورد حسابداری</b>\n\nاطلاعاتی برای نمایش ثبت نشده است.";
-  }
 
-  const lines = [];
+  const personNames = ["بابا", "مامان", "صادق", "رضا"];
+  const peopleLines = [];
+  const otherLines = [];
 
   for (const row of data) {
     const cells = row
-      .map((value, index) => ({ value: String(value ?? "").trim(), index }))
-      .filter(cell => cell.value !== "");
+      .map(value => String(value ?? "").trim())
+      .filter(value => value !== "");
 
     if (!cells.length) continue;
 
     if (cells.length === 1) {
-      lines.push(`\n<b>🔹 ${boldNumbers(cells[0].value)}</b>`);
+      otherLines.push(`<b>🔹 ${boldNumbers(cells[0])}</b>`);
       continue;
     }
 
     if (cells.length === 2) {
-      const label = cells[0].value;
-      const value = cells[1].value;
+      const [label, value] = cells;
       const normalized = label.toLowerCase();
 
       let icon = "▪️";
@@ -83,26 +81,47 @@ function formatDashboard(rows, monthlyIncome = null) {
       else if (normalized.includes("دریافت")) icon = "💳";
       else if (normalized.includes("طلب")) icon = "🟢";
       else if (normalized.includes("بده")) icon = "🔴";
-      else if (["بابا", "مامان", "صادق", "رضا"].includes(label)) icon = "👤";
 
-      lines.push(`${icon} <b>${escapeHtml(label)}</b>  ${boldNumbers(value)}`);
+      const line = `${icon} <b>${escapeHtml(label)}:</b> ${boldNumbers(value)}`;
+      if (personNames.includes(label)) peopleLines.push(line);
+      else otherLines.push(line);
       continue;
     }
 
-    const label = cells[0].value;
-    const details = cells.slice(1).map(cell => boldNumbers(cell.value));
-    lines.push(`<b>🔸 ${escapeHtml(label)}</b>\n${details.join("  |  ")}`);
+    const label = cells[0];
+    const details = cells.slice(1).map(value => boldNumbers(value));
+    otherLines.push(`<b>🔸 ${escapeHtml(label)}</b>\n${details.join("  |  ")}`);
   }
 
-  return [
+  const sections = [
     "<b>📊 داشبورد حسابداری</b>",
-    "<i>نمای کلی سرمایه، دریافتی‌ها و حساب اشخاص</i>",
-    "",
-    monthlyIncome
-      ? `💰 <b>حقوق عباس در ${escapeHtml(monthlyIncome.month)}:</b> <b>${escapeHtml(monthlyIncome.incomeFormatted)}</b>`
-      : "",
-    lines.join("\n")
-  ].join("\n");
+    "<i>نمای کلی سرمایه، دریافتی‌ها و حساب اشخاص</i>"
+  ];
+
+  if (monthlyIncome) {
+    sections.push(
+      "──────────────",
+      `💰 <b>حقوق عباس در ${escapeHtml(monthlyIncome.month)}:</b> <b>${escapeHtml(monthlyIncome.incomeFormatted)}</b>`
+    );
+  } else {
+    sections.push("──────────────", "💰 <b>حقوق عباس در ماه جاری:</b> دریافت نشده");
+  }
+
+  sections.push("──────────────", "<b>🔹 خلاصه حساب</b>");
+
+  if (peopleLines.length) {
+    sections.push(peopleLines.join("\n\n"));
+  }
+
+  if (otherLines.length) {
+    sections.push("──────────────", otherLines.join("\n"));
+  }
+
+  if (!data.length) {
+    sections.push("اطلاعات دیگری برای نمایش ثبت نشده است.");
+  }
+
+  return sections.join("\n");
 }
 
 function toAsciiDigits(value) {
