@@ -58,6 +58,15 @@ export function registerBroadcastHandlers(bot, env) {
       return;
     }
 
+    const lock = await env.DB.prepare(
+      "UPDATE user_states SET state = 'admin_broadcast_sending' WHERE telegram_id = ? AND state = 'admin_awaiting_broadcast_confirmation'"
+    ).bind(ctx.from.id).run();
+
+    if (Number(lock.meta?.changes || 0) !== 1) {
+      await ctx.answerCallbackQuery({ text: "این ارسال قبلاً شروع شده یا لغو شده است.", show_alert: true });
+      return;
+    }
+
     await ctx.answerCallbackQuery({ text: "ارسال شروع شد." });
     await ctx.editMessageText("⏳ ارسال همگانی در حال انجام است...");
 
