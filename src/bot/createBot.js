@@ -4,6 +4,7 @@ import { registerSupportHandlers } from "../modules/support.js";
 import { registerSupportDeliveryHandlers } from "../modules/supportDeliveryQueue.js";
 import { registerStartHandler } from "../handlers/start.js";
 import { registerMainMenuHandlers } from "../handlers/mainMenu.js";
+import { registerAdminMenuHandlers } from "../handlers/adminMenu.js";
 import { registerSocialHandlers } from "../handlers/socials.js";
 import { registerSkillsHandlers } from "../handlers/skills.js";
 import { registerBroadcastHandlers } from "../handlers/broadcast.js";
@@ -25,15 +26,15 @@ export function createBot(env) {
   });
 
   // Intercept mapped administrator replies before the legacy support relay.
-  // Successful replies stay silent; transient failures enter the durable D1 queue.
   registerSupportDeliveryHandlers(bot, env);
   registerSupportHandlers(bot, env);
   registerAccountingHandlers(bot, env);
   registerStartHandler(bot, env);
   registerMainMenuHandlers(bot);
+  registerAdminMenuHandlers(bot, env);
   registerSocialHandlers(bot);
   registerSkillsHandlers(bot);
-  registerBroadcastHandlers(bot, env); // must stay BEFORE the fallback handler
+  registerBroadcastHandlers(bot, env); // keep before fallback so its stateful flow can intercept messages
   registerFallbackHandler(bot);
 
   return bot;
