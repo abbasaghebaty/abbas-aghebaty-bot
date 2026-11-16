@@ -8,6 +8,7 @@ function isAdmin(ctx, env) {
 export function registerAdminMenuHandlers(bot, env) {
   bot.hears("پیام‌رسانی", async (ctx) => {
     if (!isAdmin(ctx, env)) return;
+    await env.DB.prepare("DELETE FROM user_states WHERE telegram_id = ?").bind(ctx.from.id).run();
     await ctx.reply(
       "📨 <b>مدیریت پیام‌رسانی</b>\n\nعملیات موردنظر را انتخاب کن:",
       { parse_mode: "HTML", reply_markup: adminMessagingKeyboard() }
@@ -16,6 +17,7 @@ export function registerAdminMenuHandlers(bot, env) {
 
   bot.hears("بازگشت به مدیریت", async (ctx) => {
     if (!isAdmin(ctx, env)) return;
+    await env.DB.prepare("DELETE FROM user_states WHERE telegram_id = ?").bind(ctx.from.id).run();
     await ctx.reply("پنل مدیریت", { reply_markup: adminMainKeyboard() });
   });
 
@@ -32,6 +34,7 @@ export function registerAdminMenuHandlers(bot, env) {
 
   bot.hears("فهرست مسدودشده‌ها", async (ctx) => {
     if (!isAdmin(ctx, env)) return;
+    await env.DB.prepare("DELETE FROM user_states WHERE telegram_id = ?").bind(ctx.from.id).run();
     const { results = [] } = await env.DB.prepare(
       "SELECT b.user_id, u.username, u.first_name FROM support_blocked_users b LEFT JOIN users u ON u.telegram_id = b.user_id ORDER BY b.blocked_at DESC LIMIT 50"
     ).all();
