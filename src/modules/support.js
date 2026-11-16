@@ -683,50 +683,6 @@ export function registerSupportHandlers(bot, env) {
     }
   });
 
-  bot.command("block", (ctx) => blockUser(ctx, env));
-  bot.command("unblock", async (ctx) => {
-    const arg = (ctx.message.text || "").trim().split(/\s+/)[1];
-    await unblockUser(ctx, env, arg);
-  });
-  bot.command("blocked", (ctx) => showBlocked(ctx, env));
-  const showSupportPanel = async (ctx) => {
-    if (!isAdmin(ctx, env)) return;
-    const blocked = await env.DB.prepare(
-      "SELECT COUNT(*) AS total FROM support_blocked_users"
-    ).first();
-    const keyboard = new InlineKeyboard()
-      .text("فهرست کاربران بلاک‌شده", "support:blocked")
-      .row()
-      .text("راهنمای مدیریت", "support:admin-help");
-    await ctx.reply(
-      "پنل مدیریت پشتیبانی\n\nکاربران بلاک‌شده: " + Number(blocked?.total || 0),
-      { reply_markup: keyboard }
-    );
-  };
-
-  bot.command("support", showSupportPanel);
-  bot.command("admin", showSupportPanel);
-
-  bot.callbackQuery("support:blocked", async (ctx) => {
-    if (!isAdmin(ctx, env)) {
-      await ctx.answerCallbackQuery({ text: "دسترسی ندارید." });
-      return;
-    }
-    await ctx.answerCallbackQuery();
-    await showBlocked(ctx, env);
-  });
-
-  bot.callbackQuery("support:admin-help", async (ctx) => {
-    if (!isAdmin(ctx, env)) {
-      await ctx.answerCallbackQuery({ text: "دسترسی ندارید." });
-      return;
-    }
-    await ctx.answerCallbackQuery();
-    await ctx.reply(
-      "راهنمای مدیریت پشتیبانی:\n• پاسخ به کاربر: روی پیام او Reply کنید.\n• بلاک: روی پیام کاربر Reply کنید و /block بفرستید.\n• بلاک با شناسه: /block آیدی یا @username\n• رفع بلاک: /unblock آیدی\n• فهرست بلاک‌شده‌ها: /blocked"
-    );
-  });
-
   // /start and other commands must continue to their own handlers, not become support messages.
   bot.on("message", async (ctx, next) => {
     if (!ctx.from || !ctx.message) return next();
