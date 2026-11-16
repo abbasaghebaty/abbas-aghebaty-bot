@@ -330,89 +330,6 @@ async function forwardAdminReply(ctx, env, mapped) {
   }
 }
 
-async function blockUser(ctx, env) {
-  if (!isAdmin(ctx, env)) return;
-  let userId = null;
-  let notificationHeaderId = null;
-  const replied = ctx.message.reply_to_message;
-  if (replied) {
-    const mapped = await getMappedUser(env.DB, ctx.chat.id, replied.message_id);
-    if (mapped) userId = Number(mapped.user_id);
-
-    if (!userId) {
-      const notification = await env.DB.prepare(
-        "SELECT user_id FROM support_notifications WHERE admin_chat_id = ? AND header_message_id = ?"
-      ).bind(ctx.chat.id, replied.message_id).first();
-      if (notification) {
-        userId = Number(notification.user_id);
-        notificationHeaderId = Number(replied.message_id);
-      }
-    }
-  }
-
-  const arg = (ctx.message.text || "").trim().split(/\s+/)[1];
-  if (!userId && arg) {
-    if (/^\d+$/.test(arg)) {
-      userId = Number(arg);
-    } else {
-      const username = arg.replace(/^@/, "").toLowerCase();
-      const user = await env.DB.prepare(
-        "SELECT telegram_id FROM users WHERE lower(username) = ?"
-      ).bind(username).first();
-      if (user) userId = Number(user.telegram_id);
-    }
-  }
-
-  if (!userId || !Number.isSafeInteger(userId) || userId <= 0) {
-    await ctx.reply("برای بلاک، روی پیام کاربر Reply کن و /block بفرست؛ یا /block را همراه آیدی عددی یا یوزرنیمِ ثبت‌شده ارسال کن.");
-    return;
-  }
-
-  await env.DB.prepare(
-    "INSERT OR IGNORE INTO support_blocked_users (user_id) VALUES (?)"
-  ).bind(userId).run();
-  await env.DB.batch([
-    env.DB.prepare("DELETE FROM support_pending_messages WHERE user_id = ?").bind(userId),
-    env.DB.prepare("DELETE FROM support_user_states WHERE user_id = ?").bind(userId),
-    env.DB.prepare("UPDATE support_notifications SET read_at = COALESCE(read_at, datetime('now')) WHERE user_id = ? AND read_at IS NULL").bind(userId),
-  ]);
-  if (notificationHeaderId) {
-    try { await ctx.api.deleteMessage(ctx.chat.id, notificationHeaderId); } catch {}
-  }
-  await ctx.reply("کاربر با آیدی " + userId + " بلاک شد.");
-}
-
-async function unblockUser(ctx, env, userIdArg) {
-  if (!isAdmin(ctx, env)) return;
-  let userId = Number(userIdArg);
-  if (!userIdArg || !/^\d+$/.test(String(userIdArg))) {
-    await ctx.reply("فرمت درست: /unblock آیدی_عددی");
-    return;
-  }
-  await env.DB.prepare("DELETE FROM support_blocked_users WHERE user_id = ?")
-    .bind(userId).run();
-  await ctx.reply("اگر این کاربر بلاک بود، اکنون از بلاک خارج شد.");
-}
-
-async function showBlocked(ctx, env) {
-  if (!isAdmin(ctx, env)) return;
-  const { results = [] } = await env.DB.prepare(
-    "SELECT b.user_id, u.username, u.first_name FROM support_blocked_users b LEFT JOIN users u ON u.telegram_id = b.user_id ORDER BY b.blocked_at DESC LIMIT 50"
-  ).all();
-
-  if (!results.length) {
-    await ctx.reply("فهرست کاربران بلاک‌شده خالیه.");
-    return;
-  }
-
-  const keyboard = new InlineKeyboard();
-  for (const user of results) {
-    const label = [user.first_name || "کاربر", user.username ? "@" + user.username : user.user_id].join(" · ");
-    keyboard.text("رفع بلاک: " + label.slice(0, 35), "support:unblock:" + user.user_id).row();
-  }
-  await ctx.reply("کاربران بلاک‌شده:", { reply_markup: keyboard });
-}
-
 async function finishAdminChat(ctx, env) {
   if (!isAdmin(ctx, env)) {
     await ctx.answerCallbackQuery({ text: "دسترسی ندارید." });
@@ -593,18 +510,6 @@ export function registerSupportHandlers(bot, env) {
 
   bot.callbackQuery("support:end", async (ctx) => {
     await finishAdminChat(ctx, env);
-  });
-
-  bot.callbackQuery(/^support:unblock:(\d+)$/, async (ctx) => {
-    if (!isAdmin(ctx, env)) {
-      await ctx.answerCallbackQuery({ text: "دسترسی ندارید." });
-      return;
-    }
-    const userId = Number(ctx.match[1]);
-    await env.DB.prepare("DELETE FROM support_blocked_users WHERE user_id = ?")
-      .bind(userId).run();
-    await ctx.answerCallbackQuery({ text: "رفع بلاک شد." });
-    await ctx.editMessageText("کاربر " + userId + " از فهرست بلاک خارج شد.");
   });
 
   bot.hears(BUTTONS.main.support, async (ctx) => {
